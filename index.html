@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Robot Runner</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="game-container">
+        <!-- Canvas for the game -->
+        <canvas id="gameCanvas" width="600" height="600"></canvas>
+        
+        <!-- UI Overlay -->
+        <div id="ui-layer">
+            
+            <!-- Start Screen -->
+            <div id="start-screen" class="screen active">
+                <h1>ROBOT RUNNER</h1>
+                <div class="input-group">
+                    <label for="player-name">ENTER NAME:</label>
+                    <input type="text" id="player-name" maxlength="10" placeholder="PLAYER">
+                </div>
+                <button id="start-btn" class="btn">START GAME</button>
+                
+                <div class="leaderboard-container">
+                    <h2>RANKING</h2>
+                    <ul id="leaderboard-list">
+                        <!-- Rankings will be injected here -->
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Game HUD -->
+            <div id="hud-screen" class="screen">
+                <div class="hud-top">
+                    <div id="score-display">SCORE: 0</div>
+                    <div id="speed-debuff-indicator" class="hidden">SLOWED</div>
+                </div>
+            </div>
+
+            <!-- Game Over Screen -->
+            <div id="game-over-screen" class="screen">
+                <h1>GAME OVER</h1>
+                <div class="final-score">SCORE: <span id="final-score-val">0</span></div>
+                <button id="restart-btn" class="btn">BACK TO START</button>
+            </div>
+
+        </div>
+    </div>
+    <script src="main.js"></script>
+</body>
+</html>
