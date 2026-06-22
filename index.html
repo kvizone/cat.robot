@@ -471,6 +471,384 @@
         const finalPigeonsVal = document.getElementById('final-pigeons-val');
         const leaderboardList = document.getElementById('leaderboard-list');
         const pauseOverlay = document.getElementById('pause-overlay');
+        const gameContainer = document.getElementById('game-container');
+
+        const MUSIC_BPM = 132;
+        const MUSIC_LOOKAHEAD = 0.12;
+        const MUSIC_TICK_MS = 25;
+        const MUSIC_STEP_TIME = 60 / (MUSIC_BPM * 4);
+        const MUSIC_STEPS = 32;
+
+        const MUSIC_NOTES = {
+            E2: 82.41, F2: 87.31, G2: 98.00, A2: 110.00, B2: 123.47,
+            C3: 130.81, D3: 146.83, E3: 164.81, F3: 174.61, G3: 196.00,
+            A3: 220.00, B3: 246.94, C4: 261.63, D4: 293.66, E4: 329.63,
+            F4: 349.23, G4: 392.00, A4: 440.00, B4: 493.88, C5: 523.25
+        };
+
+        const MUSIC_MELODY = [
+            'E4', null, 'G4', 'A4', null, 'G4', 'E4', null,
+            'C4', null, 'E4', 'G4', 'A4', 'B4', 'A4', 'G4',
+            'E4', null, 'G4', 'A4', 'C5', 'A4', 'G4', 'E4',
+            'D4', null, 'E4', 'G4', 'A4', null, 'G4', 'E4'
+        ].map(note => (note ? MUSIC_NOTES[note] : null));
+
+        const MUSIC_ARP = [
+            ['A3', 'C4', 'E4', 'A4'], ['F3', 'A3', 'C4', 'F4'],
+            ['C3', 'E3', 'G3', 'C4'], ['G3', 'B3', 'D4', 'G4'],
+            ['A3', 'C4', 'E4', 'A4'], ['F3', 'A3', 'C4', 'F4'],
+            ['E3', 'G3', 'B3', 'E4'], ['G3', 'B3', 'D4', 'G4']
+        ].map(chord => chord.map(note => MUSIC_NOTES[note]));
+
+        const MUSIC_BASS = [
+            'A2', 'A2', 'A2', 'A2', 'F2', 'F2', 'F2', 'F2',
+            'C3', 'C3', 'C3', 'C3', 'G2', 'G2', 'G2', 'G2',
+            'A2', 'A2', 'A2', 'A2', 'F2', 'F2', 'F2', 'F2',
+            'E2', 'E2', 'E2', 'E2', 'G2', 'G2', 'G2', 'G2'
+        ].map(note => MUSIC_NOTES[note]);
+
+        const musicEngine = {
+            ctx: null,
+            master: null,
+            playing: false,
+            step: 0,
+            nextStepTime: 0,
+            timerId: null
+        };
+
+        function initMusicEngine() {
+            if (musicEngine.ctx) {
+                if (musicEngine.ctx.state === 'suspended') {
+                    musicEngine.ctx.resume();
+                }
+                return;
+            }
+
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const master = audioCtx.createGain();
+            master.gain.value = 0.63;
+            master.connect(audioCtx.destination);
+
+            musicEngine.ctx = audioCtx;
+            musicEngine.master = master;
+        }
+
+        function playChipTone(freq, time, duration, type, volume) {
+            if (!freq || !musicEngine.ctx) return;
+
+            const osc = musicEngine.ctx.createOscillator();
+            const gain = musicEngine.ctx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, time);
+            gain.gain.setValueAtTime(0.0001, time);
+            gain.gain.exponentialRampToValueAtTime(volume, time + 0.01);
+            gain.gain.exponentialRampToValueAtTime(0.0001, time + duration);
+            osc.connect(gain);
+            gain.connect(musicEngine.master);
+            osc.start(time);
+            osc.stop(time + duration + 0.05);
+        }
+
+        function playChipKick(time) {
+            if (!musicEngine.ctx) return;
+
+            const sampleRate = musicEngine.ctx.sampleRate;
+            const length = Math.floor(sampleRate * 0.12);
+            const buffer = musicEngine.ctx.createBuffer(1, length, sampleRate);
+            const data = buffer.getChannelData(0);
+
+            for (let i = 0; i < length; i++) {
+                const t = i / length;
+                data[i] = (Math.random() * 2 - 1) * (1 - t) * (1 - t);
+            }
+
+            const source = musicEngine.ctx.createBufferSource();
+            const filter = musicEngine.ctx.createBiquadFilter();
+            const gain = musicEngine.ctx.createGain();
+            source.buffer = buffer;
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(180, time);
+            gain.gain.setValueAtTime(0.45, time);
+            gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.12);
+            source.connect(filter);
+            filter.connect(gain);
+            gain.connect(musicEngine.master);
+            source.start(time);
+        }
+
+        function playChipSnare(time) {
+            if (!musicEngine.ctx) return;
+
+            const sampleRate = musicEngine.ctx.sampleRate;
+            const length = Math.floor(sampleRate * 0.08);
+            const buffer = musicEngine.ctx.createBuffer(1, length, sampleRate);
+            const data = buffer.getChannelData(0);
+
+            for (let i = 0; i < length; i++) {
+                const t = i / length;
+                data[i] = (Math.random() * 2 - 1) * (1 - t);
+            }
+
+            const source = musicEngine.ctx.createBufferSource();
+            const gain = musicEngine.ctx.createGain();
+            source.buffer = buffer;
+            gain.gain.setValueAtTime(0.16, time);
+            gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.08);
+            source.connect(gain);
+            gain.connect(musicEngine.master);
+            source.start(time);
+        }
+
+        function playJumpPoing() {
+            initMusicEngine();
+            if (!musicEngine.ctx) return;
+
+            const ctx = musicEngine.ctx;
+            const time = ctx.currentTime;
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(220, time);
+            osc.frequency.exponentialRampToValueAtTime(980, time + 0.07);
+            osc.frequency.exponentialRampToValueAtTime(360, time + 0.2);
+
+            gain.gain.setValueAtTime(0.0001, time);
+            gain.gain.exponentialRampToValueAtTime(0.24, time + 0.008);
+            gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.22);
+
+            osc.connect(gain);
+            gain.connect(musicEngine.master);
+            osc.start(time);
+            osc.stop(time + 0.24);
+        }
+
+        function playButtonPlim() {
+            initMusicEngine();
+            if (!musicEngine.ctx) return;
+
+            const ctx = musicEngine.ctx;
+            const time = ctx.currentTime;
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(1046.5, time);
+            osc.frequency.exponentialRampToValueAtTime(1567.98, time + 0.04);
+
+            gain.gain.setValueAtTime(0.0001, time);
+            gain.gain.exponentialRampToValueAtTime(0.16, time + 0.004);
+            gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.14);
+
+            osc.connect(gain);
+            gain.connect(musicEngine.master);
+            osc.start(time);
+            osc.stop(time + 0.16);
+        }
+
+        function playTypeTap() {
+            initMusicEngine();
+            if (!musicEngine.ctx) return;
+
+            const ctx = musicEngine.ctx;
+            const time = ctx.currentTime;
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(520, time);
+            osc.frequency.exponentialRampToValueAtTime(280, time + 0.025);
+
+            gain.gain.setValueAtTime(0.0001, time);
+            gain.gain.exponentialRampToValueAtTime(0.09, time + 0.002);
+            gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.035);
+
+            osc.connect(gain);
+            gain.connect(musicEngine.master);
+            osc.start(time);
+            osc.stop(time + 0.04);
+        }
+
+        function playStartCatMeowPurr() {
+            initMusicEngine();
+            if (!musicEngine.ctx) return;
+
+            const ctx = musicEngine.ctx;
+            const time = ctx.currentTime;
+
+            const meowOsc = ctx.createOscillator();
+            const meowFilter = ctx.createBiquadFilter();
+            const meowGain = ctx.createGain();
+
+            meowOsc.type = 'sawtooth';
+            meowOsc.frequency.setValueAtTime(720, time);
+            meowOsc.frequency.exponentialRampToValueAtTime(320, time + 0.14);
+            meowOsc.frequency.exponentialRampToValueAtTime(480, time + 0.32);
+            meowOsc.frequency.exponentialRampToValueAtTime(260, time + 0.52);
+
+            meowFilter.type = 'bandpass';
+            meowFilter.frequency.setValueAtTime(580, time);
+            meowFilter.Q.value = 1.8;
+
+            meowGain.gain.setValueAtTime(0.0001, time);
+            meowGain.gain.exponentialRampToValueAtTime(0.11, time + 0.025);
+            meowGain.gain.setValueAtTime(0.09, time + 0.28);
+            meowGain.gain.exponentialRampToValueAtTime(0.0001, time + 0.58);
+
+            meowOsc.connect(meowFilter);
+            meowFilter.connect(meowGain);
+            meowGain.connect(musicEngine.master);
+            meowOsc.start(time);
+            meowOsc.stop(time + 0.62);
+
+            const purrStart = time + 0.48;
+            const purrOsc = ctx.createOscillator();
+            const purrLfo = ctx.createOscillator();
+            const purrLfoGain = ctx.createGain();
+            const purrGain = ctx.createGain();
+
+            purrOsc.type = 'triangle';
+            purrOsc.frequency.setValueAtTime(28, purrStart);
+            purrLfo.type = 'sine';
+            purrLfo.frequency.setValueAtTime(5.5, purrStart);
+            purrLfoGain.gain.value = 0.05;
+            purrLfo.connect(purrLfoGain);
+            purrLfoGain.connect(purrGain.gain);
+
+            purrGain.gain.setValueAtTime(0.07, purrStart);
+            purrGain.gain.exponentialRampToValueAtTime(0.0001, purrStart + 1.1);
+
+            purrOsc.connect(purrGain);
+            purrGain.connect(musicEngine.master);
+            purrOsc.start(purrStart);
+            purrOsc.stop(purrStart + 1.15);
+            purrLfo.start(purrStart);
+            purrLfo.stop(purrStart + 1.15);
+        }
+
+        function playCrashTrash() {
+            initMusicEngine();
+            if (!musicEngine.ctx) return;
+
+            const ctx = musicEngine.ctx;
+            const time = ctx.currentTime;
+            const sampleRate = ctx.sampleRate;
+            const length = Math.floor(sampleRate * 0.38);
+            const buffer = ctx.createBuffer(1, length, sampleRate);
+            const data = buffer.getChannelData(0);
+
+            for (let i = 0; i < length; i++) {
+                const t = i / length;
+                data[i] = (Math.random() * 2 - 1) * (1 - t) * (1 - t);
+            }
+
+            const noise = ctx.createBufferSource();
+            const noiseFilter = ctx.createBiquadFilter();
+            const noiseGain = ctx.createGain();
+            noise.buffer = buffer;
+            noiseFilter.type = 'bandpass';
+            noiseFilter.frequency.setValueAtTime(920, time);
+            noiseFilter.frequency.exponentialRampToValueAtTime(90, time + 0.32);
+            noiseFilter.Q.value = 0.9;
+            noiseGain.gain.setValueAtTime(0.38, time);
+            noiseGain.gain.exponentialRampToValueAtTime(0.0001, time + 0.36);
+            noise.connect(noiseFilter);
+            noiseFilter.connect(noiseGain);
+            noiseGain.connect(musicEngine.master);
+            noise.start(time);
+
+            const thud = ctx.createOscillator();
+            const thudGain = ctx.createGain();
+            thud.type = 'sawtooth';
+            thud.frequency.setValueAtTime(160, time);
+            thud.frequency.exponentialRampToValueAtTime(35, time + 0.28);
+            thudGain.gain.setValueAtTime(0.0001, time);
+            thudGain.gain.exponentialRampToValueAtTime(0.3, time + 0.012);
+            thudGain.gain.exponentialRampToValueAtTime(0.0001, time + 0.32);
+            thud.connect(thudGain);
+            thudGain.connect(musicEngine.master);
+            thud.start(time);
+            thud.stop(time + 0.34);
+
+            const crunch = ctx.createOscillator();
+            const crunchGain = ctx.createGain();
+            crunch.type = 'square';
+            crunch.frequency.setValueAtTime(110, time);
+            crunch.frequency.exponentialRampToValueAtTime(42, time + 0.16);
+            crunchGain.gain.setValueAtTime(0.2, time);
+            crunchGain.gain.exponentialRampToValueAtTime(0.0001, time + 0.18);
+            crunch.connect(crunchGain);
+            crunchGain.connect(musicEngine.master);
+            crunch.start(time);
+            crunch.stop(time + 0.2);
+        }
+
+        function scheduleMusicStep(step, time) {
+            const melody = MUSIC_MELODY[step];
+            const bass = MUSIC_BASS[step];
+            const arp = MUSIC_ARP[Math.floor(step / 4)][step % 4];
+
+            if (melody) {
+                playChipTone(melody, time, MUSIC_STEP_TIME * 0.9, 'square', 0.09);
+            }
+
+            if (step % 2 === 0) {
+                playChipTone(arp, time, MUSIC_STEP_TIME * 0.75, 'square', 0.045);
+            }
+
+            if (step % 4 === 0) {
+                playChipTone(bass, time, MUSIC_STEP_TIME * 3.6, 'triangle', 0.14);
+            }
+
+            if (step % 8 === 0) {
+                playChipKick(time);
+            } else if (step % 8 === 4) {
+                playChipSnare(time);
+            }
+        }
+
+        function musicSchedulerTick() {
+            if (!musicEngine.playing || !musicEngine.ctx) return;
+
+            while (musicEngine.nextStepTime < musicEngine.ctx.currentTime + MUSIC_LOOKAHEAD) {
+                scheduleMusicStep(musicEngine.step, musicEngine.nextStepTime);
+                musicEngine.nextStepTime += MUSIC_STEP_TIME;
+                musicEngine.step = (musicEngine.step + 1) % MUSIC_STEPS;
+            }
+        }
+
+        let musicStarted = false;
+        let startScreenSoundPlayed = false;
+
+        function tryPlayStartScreenSound() {
+            if (startScreenSoundPlayed) return;
+            initMusicEngine();
+            if (!musicEngine.ctx || musicEngine.ctx.state === 'suspended') return;
+            startScreenSoundPlayed = true;
+            playStartCatMeowPurr();
+        }
+
+        function tryStartMusicOnInteraction() {
+            initMusicEngine();
+            if (!startScreenSoundPlayed) {
+                startScreenSoundPlayed = true;
+                playStartCatMeowPurr();
+            }
+            if (musicStarted) return;
+            musicStarted = true;
+            startMusic();
+        }
+
+        function startMusic() {
+            initMusicEngine();
+            if (musicEngine.playing) return;
+
+            musicEngine.playing = true;
+            musicEngine.nextStepTime = musicEngine.ctx.currentTime + 0.05;
+            musicEngine.timerId = window.setInterval(musicSchedulerTick, MUSIC_TICK_MS);
+        }
+
+        gameContainer.addEventListener('pointerdown', tryStartMusicOnInteraction, { once: true });
 
         const PALETTE = [
             null,
@@ -1051,6 +1429,7 @@
                 robot.vy = robot.jumpPower;
                 robot.isGrounded = false;
                 robot.isDucking = false;
+                playJumpPoing();
             }
         }
 
@@ -1089,6 +1468,7 @@
         }
 
         function gameOver() {
+            playCrashTrash();
             gameState = 'GAMEOVER';
             finalScoreVal.textContent = score;
             finalPigeonsVal.textContent = pigeonsCaptured;
@@ -1238,17 +1618,38 @@
             resetTouchState();
         });
 
-        startBtn.addEventListener('click', startGame);
-        restartBtn.addEventListener('click', () => {
+        function bindButtonPlim(button, handler) {
+            button.addEventListener('click', () => {
+                playButtonPlim();
+                handler();
+            });
+        }
+
+        bindButtonPlim(startBtn, startGame);
+        bindButtonPlim(restartBtn, () => {
             loadLeaderboard();
             setScreen('start-screen');
             gameState = 'START';
+            playStartCatMeowPurr();
         });
-        pauseBtn.addEventListener('click', pauseGame);
-        resumeBtn.addEventListener('click', resumeGame);
+        bindButtonPlim(pauseBtn, pauseGame);
+        bindButtonPlim(resumeBtn, resumeGame);
+
+        playerNameInput.addEventListener('keydown', (e) => {
+            if (e.ctrlKey || e.metaKey || e.altKey) return;
+            initMusicEngine();
+            if (musicEngine.ctx?.state === 'suspended') {
+                musicEngine.ctx.resume();
+            }
+            if (e.key.length === 1 || e.key === 'Backspace' || e.key === 'Delete') {
+                playTypeTap();
+            }
+        });
 
         drawStartCat();
         loadLeaderboard();
+        initMusicEngine();
+        tryPlayStartScreenSound();
         requestAnimationFrame(gameLoop);
     </script>
 </body>
