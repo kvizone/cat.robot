@@ -1,56 +1,1133 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Robot Runner</title>
-    <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #fff2df;
+            --fg-color: #0a0a16;
+            --accent-red: #fd0e45;
+            --accent-pink: #fe5a8f;
+            --dark-blue: #272938;
+            --dark-red: #8c0013;
+            --off-white: #f5fbff;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--dark-blue);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: 'Press Start 2P', monospace;
+            color: var(--fg-color);
+            overflow: hidden;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            aspect-ratio: 1 / 1;
+            background-color: var(--bg-color);
+            box-shadow: 0 0 40px rgba(10, 10, 22, 0.4);
+            image-rendering: pixelated;
+            border: 4px solid var(--fg-color);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        #ui-layer {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+        }
+
+        .screen {
+            position: absolute;
+            inset: 0;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            pointer-events: auto;
+            background-color: rgba(255, 242, 223, 0.9);
+            padding: 20px;
+            z-index: 10;
+        }
+
+        .screen.active {
+            display: flex;
+        }
+
+        #start-screen {
+            justify-content: flex-start;
+            overflow-y: auto;
+        }
+
+        .start-hero {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        #start-cat-canvas {
+            width: 80px;
+            height: 84px;
+            image-rendering: pixelated;
+            margin-bottom: 16px;
+        }
+
+        .start-hero h1 {
+            margin-bottom: 16px;
+        }
+
+        .start-hero .subtitle {
+            margin-bottom: 28px;
+        }
+
+        #hud-screen {
+            background-color: transparent;
+            justify-content: flex-start;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .hud-top {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 16px;
+        }
+
+        .hud-stats {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .hidden {
+            visibility: hidden;
+        }
+
+        #speed-debuff-indicator {
+            color: var(--accent-red);
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        .pause-btn {
+            pointer-events: auto;
+            flex-shrink: 0;
+            width: 44px;
+            height: 44px;
+            background-color: var(--off-white);
+            border: 4px solid var(--fg-color);
+            box-shadow: 3px 3px 0 var(--fg-color);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.1s;
+        }
+
+        .pause-btn:hover {
+            background-color: var(--fg-color);
+        }
+
+        .pause-btn:hover .pause-icon::before,
+        .pause-btn:hover .pause-icon::after {
+            background-color: var(--off-white);
+        }
+
+        .pause-btn:active {
+            transform: translate(2px, 2px);
+            box-shadow: 1px 1px 0 var(--fg-color);
+        }
+
+        .pause-icon {
+            display: flex;
+            gap: 5px;
+        }
+
+        .pause-icon::before,
+        .pause-icon::after {
+            content: '';
+            width: 6px;
+            height: 18px;
+            background-color: var(--fg-color);
+        }
+
+        #pause-overlay {
+            position: absolute;
+            inset: 0;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 30px;
+            background-color: rgba(255, 242, 223, 0.92);
+            z-index: 20;
+            pointer-events: auto;
+        }
+
+        #pause-overlay.active {
+            display: flex;
+        }
+
+        #pause-overlay h2 {
+            font-size: 28px;
+            color: var(--fg-color);
+        }
+
+        h1 {
+            font-size: 36px;
+            margin-bottom: 20px;
+            text-align: center;
+            line-height: 1.5;
+            color: var(--fg-color);
+        }
+
+        .subtitle {
+            font-size: 10px;
+            line-height: 1.8;
+            text-align: center;
+            max-width: 420px;
+            margin-bottom: 32px;
+            color: var(--dark-red);
+        }
+
+        h2 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: var(--dark-red);
+        }
+
+        .input-group {
+            margin-bottom: 30px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+
+        input[type="text"] {
+            background-color: var(--off-white);
+            border: 4px solid var(--fg-color);
+            color: var(--fg-color);
+            font-family: inherit;
+            font-size: 20px;
+            padding: 10px;
+            text-align: center;
+            width: 250px;
+            outline: none;
+        }
+
+        input[type="text"]:focus {
+            border-color: var(--accent-red);
+        }
+
+        input[type="text"]::placeholder {
+            color: rgba(10, 10, 22, 0.4);
+        }
+
+        .btn {
+            background-color: var(--accent-red);
+            color: var(--off-white);
+            border: 4px solid var(--fg-color);
+            padding: 15px 30px;
+            font-family: inherit;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.1s;
+            box-shadow: 4px 4px 0 var(--fg-color);
+        }
+
+        .btn:hover {
+            background-color: var(--fg-color);
+            color: var(--off-white);
+        }
+
+        .btn:active {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0 var(--fg-color);
+        }
+
+        .leaderboard-container {
+            margin-top: 24px;
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+            background-color: var(--off-white);
+            border: 4px solid var(--fg-color);
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 4px 4px 0 var(--dark-blue);
+        }
+
+        #leaderboard-list {
+            list-style: none;
+            text-align: left;
+            max-height: 140px;
+            overflow-y: auto;
+        }
+
+        #leaderboard-list li {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 10px;
+            font-size: 11px;
+            border-bottom: 2px dashed var(--dark-blue);
+            padding-bottom: 5px;
+        }
+
+        #leaderboard-list li.empty-row {
+            display: block;
+            text-align: center;
+        }
+
+        .rank-score {
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        .final-score {
+            font-size: 24px;
+            margin-bottom: 16px;
+            color: var(--accent-red);
+            animation: bounce 1s infinite alternate;
+        }
+
+        .final-pigeons {
+            font-size: 14px;
+            margin-bottom: 40px;
+            color: var(--dark-red);
+        }
+
+        @keyframes bounce {
+            from { transform: translateY(0); }
+            to { transform: translateY(-5px); }
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--off-white);
+            border-left: 2px solid var(--fg-color);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--fg-color);
+        }
+    </style>
 </head>
 <body>
     <div id="game-container">
-        <!-- Canvas for the game -->
         <canvas id="gameCanvas" width="600" height="600"></canvas>
-        
-        <!-- UI Overlay -->
+
         <div id="ui-layer">
-            
-            <!-- Start Screen -->
             <div id="start-screen" class="screen active">
-                <h1>ROBOT RUNNER</h1>
+                <div class="start-hero">
+                    <canvas id="start-cat-canvas" width="80" height="84" aria-hidden="true"></canvas>
+                    <h1>ROBOT RUNNER</h1>
+                    <p class="subtitle">Capture as pombas e desvie das IAs.</p>
+                </div>
+
                 <div class="input-group">
                     <label for="player-name">ENTER NAME:</label>
                     <input type="text" id="player-name" maxlength="10" placeholder="PLAYER">
                 </div>
-                <button id="start-btn" class="btn">START GAME</button>
-                
+                <button id="start-btn" class="btn" type="button">START GAME</button>
+
                 <div class="leaderboard-container">
                     <h2>RANKING</h2>
-                    <ul id="leaderboard-list">
-                        <!-- Rankings will be injected here -->
-                    </ul>
+                    <ul id="leaderboard-list"></ul>
                 </div>
             </div>
 
-            <!-- Game HUD -->
             <div id="hud-screen" class="screen">
                 <div class="hud-top">
-                    <div id="score-display">SCORE: 0</div>
-                    <div id="speed-debuff-indicator" class="hidden">SLOWED</div>
+                    <div class="hud-stats">
+                        <div id="score-display">SCORE: 0</div>
+                        <div id="pigeons-display">POMBAS: 0</div>
+                        <div id="speed-debuff-indicator" class="hidden">SLOWED</div>
+                    </div>
+                    <button id="pause-btn" class="pause-btn" type="button" aria-label="Pausar">
+                        <span class="pause-icon" aria-hidden="true"></span>
+                    </button>
                 </div>
             </div>
 
-            <!-- Game Over Screen -->
             <div id="game-over-screen" class="screen">
                 <h1>GAME OVER</h1>
                 <div class="final-score">SCORE: <span id="final-score-val">0</span></div>
-                <button id="restart-btn" class="btn">BACK TO START</button>
+                <div class="final-pigeons">POMBAS: <span id="final-pigeons-val">0</span></div>
+                <button id="restart-btn" class="btn" type="button">BACK TO START</button>
             </div>
 
+            <div id="pause-overlay">
+                <h2>PAUSED</h2>
+                <button id="resume-btn" class="btn" type="button">RESUME</button>
+            </div>
         </div>
     </div>
-    <script src="main.js"></script>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const startCatCanvas = document.getElementById('start-cat-canvas');
+        const startCatCtx = startCatCanvas.getContext('2d');
+
+        const playerNameInput = document.getElementById('player-name');
+        const startBtn = document.getElementById('start-btn');
+        const restartBtn = document.getElementById('restart-btn');
+        const pauseBtn = document.getElementById('pause-btn');
+        const resumeBtn = document.getElementById('resume-btn');
+        const scoreDisplay = document.getElementById('score-display');
+        const pigeonsDisplay = document.getElementById('pigeons-display');
+        const speedDebuffIndicator = document.getElementById('speed-debuff-indicator');
+        const finalScoreVal = document.getElementById('final-score-val');
+        const finalPigeonsVal = document.getElementById('final-pigeons-val');
+        const leaderboardList = document.getElementById('leaderboard-list');
+        const pauseOverlay = document.getElementById('pause-overlay');
+
+        const PALETTE = [
+            null,
+            '#0a0a16',
+            '#272938',
+            '#8c0013',
+            '#fe5a8f',
+            '#f5fbff',
+            '#fff2df',
+            '#ef243a',
+            '#ffcc00'
+        ];
+
+        const BG_COLOR = PALETTE[6];
+        const FG_COLOR = PALETTE[1];
+        const CITY_DARK = PALETTE[2];
+        const CITY_LIGHT = PALETTE[5];
+        const GROUND_Y = 450;
+        const CANVAS_WIDTH = 600;
+        const CANVAS_HEIGHT = 600;
+        const CAT_SCALE = 4;
+        const SKY_COLOR = CITY_LIGHT;
+        const SCENE_FAR = '#E9E3D9';
+        const GROUND_COLOR = '#FDF8F0';
+        const GROUND_LINE = CITY_DARK;
+        const GROUND_ACCENT = CITY_DARK;
+        const GROUND_PATTERN = 30;
+        const LEADERBOARD_KEY = 'robotRunnerLeaderboard';
+        const START_CAT_SCALE = 5;
+
+        const sprStartCatSitting = [
+            [0,0,0,0,0,0,0,0,0,0,0,0,1,0],
+            [0,0,0,0,0,0,0,0,0,0,0,1,1,0],
+            [0,0,0,0,0,0,0,0,0,0,1,1,1,0],
+            [0,0,0,1,1,0,0,1,1,0,0,0,0,0],
+            [0,0,1,1,4,4,1,1,4,4,1,1,0,0],
+            [0,1,1,1,1,1,1,1,1,1,1,1,0,0],
+            [0,1,1,8,8,8,1,8,8,8,1,1,0,0],
+            [0,1,1,8,5,8,1,8,5,8,1,1,0,0],
+            [0,1,1,8,1,8,1,8,1,8,1,1,0,0],
+            [0,1,1,1,1,4,1,1,1,1,1,1,0,0],
+            [0,0,1,1,1,1,1,1,1,1,1,0,0,0],
+            [0,0,1,1,2,2,1,1,2,2,1,1,0,0],
+            [0,0,1,1,2,2,1,1,2,2,1,1,0,0],
+            [0,0,1,1,1,1,1,1,1,1,1,1,0,0],
+            [0,0,0,1,1,0,1,1,0,1,1,0,0,0]
+        ];
+
+        const sprCatRun1 = [
+            [0,0,0,0,0,0,0,0,0,0,0,0],
+            [1,0,0,0,0,0,0,0,0,0,0,0],
+            [1,0,0,0,0,0,0,1,0,0,1,0],
+            [1,1,0,0,0,0,0,1,4,1,4,1],
+            [0,1,1,0,0,0,0,1,1,1,1,1],
+            [0,0,1,1,1,1,1,1,8,1,8,1],
+            [0,0,0,1,1,1,1,1,1,1,1,1],
+            [0,0,0,1,1,1,1,1,1,1,1,0],
+            [0,0,0,1,1,1,1,1,1,1,1,0],
+            [0,0,0,1,0,0,1,1,0,0,1,0],
+            [0,0,1,0,0,0,0,1,0,0,1,0],
+            [0,0,1,1,0,0,0,1,1,0,1,1]
+        ];
+
+        const sprCatRun2 = [
+            [0,0,0,0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0],
+            [1,0,0,0,0,0,0,1,0,0,1,0],
+            [1,1,0,0,0,0,0,1,4,1,4,1],
+            [0,1,1,0,0,0,0,1,1,1,1,1],
+            [0,0,1,1,1,1,1,1,8,1,8,1],
+            [0,0,0,1,1,1,1,1,1,1,1,1],
+            [0,0,0,1,1,1,1,1,1,1,1,0],
+            [0,0,0,1,1,1,1,1,1,1,1,0],
+            [0,0,0,0,1,1,1,0,1,1,0,0],
+            [0,0,0,0,1,0,1,0,1,0,0,0],
+            [0,0,0,0,1,1,1,1,1,1,0,0]
+        ];
+
+        const sprCatDuck1 = [
+            [0,0,0,0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,1,0,0,1,0],
+            [0,0,0,0,0,0,0,1,4,1,4,1],
+            [0,0,0,0,0,1,1,1,1,1,1,1],
+            [0,0,0,1,1,1,1,1,8,1,8,1],
+            [1,1,1,1,1,1,1,1,1,1,1,1],
+            [0,0,1,1,1,1,1,1,1,1,1,0],
+            [0,0,0,1,1,1,1,1,1,1,0,0]
+        ];
+
+        const sprMonitor = [
+            [0,0,1,1,1,1,1,1,1,0,0,0],
+            [0,1,6,6,6,6,6,6,6,1,0,0],
+            [1,6,1,1,1,1,1,1,6,6,1,0],
+            [1,6,1,2,2,2,5,1,6,6,1,0],
+            [1,6,1,4,4,2,2,1,6,6,1,0],
+            [1,6,1,2,2,2,2,1,6,6,1,0],
+            [1,6,1,1,1,1,1,1,6,6,1,0],
+            [1,6,6,6,6,6,6,6,6,1,0,0],
+            [0,1,6,1,1,6,4,6,6,1,0,0],
+            [1,6,6,6,6,6,6,6,6,6,1,0],
+            [1,6,1,6,6,6,6,1,6,6,1,0],
+            [0,1,1,1,1,1,1,1,1,1,0,0]
+        ];
+
+        const sprRobotObs = [
+            [0,0,0,1,1,1,1,1,1,0,0,0],
+            [0,0,1,5,5,5,5,5,5,1,0,0],
+            [0,1,1,1,1,1,1,1,5,1,0,0],
+            [1,5,1,8,8,1,8,8,1,5,1,0],
+            [1,1,1,1,1,1,1,1,1,1,1,0],
+            [0,0,1,5,5,5,5,5,5,1,0,0],
+            [0,0,0,1,1,1,1,1,1,0,0,0],
+            [0,0,0,1,6,6,6,6,1,0,0,0],
+            [0,1,1,6,6,6,6,6,1,1,0,0],
+            [0,0,0,1,6,6,6,6,1,0,0,0],
+            [0,0,0,1,6,1,1,6,1,0,0,0],
+            [0,0,0,1,1,0,0,1,1,0,0,0]
+        ];
+
+        const sprDrone = [
+            [0,0,0,1,1,1,1,1,1,0,0,0],
+            [0,0,1,5,5,5,5,5,5,1,0,0],
+            [0,1,5,2,2,2,2,5,5,5,1,0],
+            [1,1,1,1,1,1,1,1,1,1,1,1],
+            [1,2,7,2,2,4,2,2,7,2,2,1],
+            [0,1,1,1,1,1,1,1,1,1,1,0],
+            [0,0,1,0,0,1,1,0,0,1,0,0],
+            [0,1,1,0,0,1,1,0,0,1,1,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0]
+        ];
+
+        const sprPigeon = [
+            [0,0,0,0,1,1,1,1,0,0,0,0],
+            [0,0,0,1,2,2,2,2,1,0,0,0],
+            [0,0,1,1,2,2,5,5,2,1,0,0],
+            [0,1,8,2,2,2,5,1,2,1,0,0],
+            [0,0,1,1,2,2,2,2,2,1,0,0],
+            [0,0,1,2,2,2,2,2,2,2,1,0],
+            [0,0,1,2,1,1,1,2,2,2,1,1],
+            [0,0,1,1,2,2,2,1,2,1,2,1],
+            [0,0,0,1,2,2,2,2,1,1,1,0],
+            [0,0,0,0,1,1,1,1,1,0,0,0],
+            [0,0,0,0,8,0,0,8,0,0,0,0],
+            [0,0,0,0,8,8,0,8,8,0,0,0]
+        ];
+
+        let gameState = 'START';
+        let score = 0;
+        let pigeonsCaptured = 0;
+        let distance = 0;
+        let baseSpeed = 5;
+        let currentSpeed = baseSpeed;
+        let speedMultiplier = 1;
+        let slowDownTimer = 0;
+        let frames = 0;
+        let playerName = '';
+        let staticBackgroundCanvas = null;
+        let groundOffset = 0;
+
+        const robot = {
+            x: 50,
+            y: GROUND_Y - 12 * CAT_SCALE,
+            width: 12 * CAT_SCALE,
+            height: 12 * CAT_SCALE,
+            normalHeight: 12 * CAT_SCALE,
+            duckHeight: 7 * CAT_SCALE,
+            vy: 0,
+            gravity: 0.6,
+            jumpPower: -12,
+            isGrounded: true,
+            isDucking: false,
+            animationTimer: 0,
+            runFrame: 0
+        };
+
+        let obstacles = [];
+        let pigeons = [];
+        let nextPigeonScoreTarget = 500;
+
+        function drawSpriteWithPalette(sprite, context, x, y, scale, palette) {
+            for (let r = 0; r < sprite.length; r++) {
+                for (let c = 0; c < sprite[r].length; c++) {
+                    const colorIndex = sprite[r][c];
+                    if (colorIndex !== 0) {
+                        context.fillStyle = palette[colorIndex];
+                        context.fillRect(x + c * scale, y + r * scale, scale, scale);
+                    }
+                }
+            }
+        }
+
+        function drawSprite(sprite, x, y, scale) {
+            drawSpriteWithPalette(sprite, ctx, x, y, scale, PALETTE);
+        }
+
+        function drawStartCat() {
+            startCatCtx.clearRect(0, 0, startCatCanvas.width, startCatCanvas.height);
+            const spriteWidth = sprStartCatSitting[0].length * START_CAT_SCALE;
+            const spriteHeight = sprStartCatSitting.length * START_CAT_SCALE;
+            const offsetX = (startCatCanvas.width - spriteWidth) / 2;
+            const offsetY = (startCatCanvas.height - spriteHeight) / 2;
+            drawSpriteWithPalette(sprStartCatSitting, startCatCtx, offsetX, offsetY, START_CAT_SCALE, PALETTE);
+        }
+
+        function drawSkyDither(context) {
+            context.fillStyle = BG_COLOR;
+            for (let y = 0; y < 90; y++) {
+                const density = 1 - y / 90;
+                for (let x = 0; x < CANVAS_WIDTH; x += 4) {
+                    if ((x + y * 3) % 9 < density * 5) {
+                        context.fillRect(x, y, 2, 2);
+                    }
+                }
+            }
+        }
+
+        function drawPixelCloud(context, cx, cy, unit) {
+            context.fillStyle = SCENE_FAR;
+            const blocks = [
+                [0, 1, 3], [1, 0, 4], [1, 1, 5], [2, 1, 3], [0, 2, 2], [3, 2, 2]
+            ];
+            for (const [bx, by, bw] of blocks) {
+                context.fillRect(cx + bx * unit, cy + by * unit, bw * unit, unit);
+            }
+        }
+
+        function drawDistantHill(context, x, groundY, width, height) {
+            context.fillStyle = SCENE_FAR;
+            for (let row = 0; row < height; row++) {
+                const inset = Math.floor((height - row) * 0.22);
+                context.fillRect(x + inset, groundY - height + row, width - inset * 2, 1);
+            }
+        }
+
+        function drawFarHouse(context, x, groundY, width, height) {
+            const top = groundY - height;
+            context.fillStyle = SCENE_FAR;
+            context.fillRect(x, top + 4, width, height - 4);
+            context.fillRect(x - 2, top, width + 4, 4);
+        }
+
+        function drawFarTree(context, x, groundY) {
+            context.fillStyle = SCENE_FAR;
+            context.fillRect(x - 2, groundY - 14, 4, 14);
+            context.fillRect(x - 10, groundY - 22, 20, 8);
+            context.fillRect(x - 7, groundY - 28, 14, 6);
+            context.fillRect(x - 4, groundY - 32, 8, 4);
+        }
+
+        function drawUtilityPole(context, x, groundY) {
+            context.fillStyle = SCENE_FAR;
+            context.fillRect(x, groundY - 52, 2, 52);
+            context.fillRect(x - 8, groundY - 48, 18, 2);
+            context.fillRect(x - 6, groundY - 40, 14, 2);
+        }
+
+        function buildStaticBackground() {
+            const bg = document.createElement('canvas');
+            bg.width = CANVAS_WIDTH;
+            bg.height = GROUND_Y;
+            const bctx = bg.getContext('2d');
+            const horizon = GROUND_Y - 58;
+
+            bctx.fillStyle = SKY_COLOR;
+            bctx.fillRect(0, 0, CANVAS_WIDTH, GROUND_Y);
+            drawSkyDither(bctx);
+
+            drawPixelCloud(bctx, 55, 38, 5);
+            drawPixelCloud(bctx, 195, 62, 4);
+            drawPixelCloud(bctx, 340, 28, 5);
+            drawPixelCloud(bctx, 470, 72, 4);
+            drawPixelCloud(bctx, 520, 34, 3);
+
+            drawDistantHill(bctx, 0, horizon + 18, 120, 18);
+            drawDistantHill(bctx, CANVAS_WIDTH - 100, horizon + 16, 100, 16);
+
+            drawFarHouse(bctx, 28, horizon + 18, 38, 18);
+            drawFarHouse(bctx, 72, horizon + 18, 52, 24);
+            drawFarHouse(bctx, 132, horizon + 18, 44, 20);
+            drawFarHouse(bctx, 182, horizon + 18, 36, 16);
+            drawFarHouse(bctx, 224, horizon + 18, 58, 26);
+            drawFarHouse(bctx, 290, horizon + 18, 42, 19);
+            drawFarHouse(bctx, 340, horizon + 18, 48, 22);
+            drawFarHouse(bctx, 396, horizon + 18, 34, 17);
+            drawFarHouse(bctx, 438, horizon + 18, 56, 25);
+            drawFarHouse(bctx, 502, horizon + 18, 40, 18);
+            drawFarHouse(bctx, 550, horizon + 18, 46, 21);
+
+            drawFarTree(bctx, 118, horizon + 18);
+            drawFarTree(bctx, 268, horizon + 18);
+            drawFarTree(bctx, 378, horizon + 18);
+            drawFarTree(bctx, 488, horizon + 18);
+
+            drawUtilityPole(bctx, 168, horizon + 18);
+            drawUtilityPole(bctx, 418, horizon + 18);
+
+            bctx.strokeStyle = SCENE_FAR;
+            bctx.lineWidth = 1;
+            bctx.beginPath();
+            bctx.moveTo(168, horizon - 34);
+            bctx.lineTo(418, horizon - 34);
+            bctx.stroke();
+
+            bctx.fillStyle = GROUND_COLOR;
+            bctx.fillRect(0, horizon + 18, CANVAS_WIDTH, GROUND_Y - horizon - 18);
+
+            return bg;
+        }
+
+        function updateGroundScroll(speed) {
+            groundOffset = (groundOffset + speed) % GROUND_PATTERN;
+        }
+
+        function drawGround() {
+            ctx.fillStyle = GROUND_COLOR;
+            ctx.fillRect(0, GROUND_Y + 4, CANVAS_WIDTH, CANVAS_HEIGHT - GROUND_Y - 4);
+
+            ctx.fillStyle = GROUND_LINE;
+            ctx.fillRect(0, GROUND_Y, CANVAS_WIDTH, 4);
+
+            ctx.fillStyle = GROUND_ACCENT;
+
+            for (let x = -groundOffset - GROUND_PATTERN; x < CANVAS_WIDTH + 10; x += 10) {
+                const idx = Math.floor((x + groundOffset) / 10);
+                if (idx % 3 !== 1) {
+                    ctx.fillRect(x, GROUND_Y - 8, 4, 2);
+                }
+            }
+
+            for (let x = -groundOffset - GROUND_PATTERN; x < CANVAS_WIDTH + 10; x += 14) {
+                const idx = Math.floor((x + groundOffset + 6) / 14);
+                if (idx % 2 === 0) {
+                    ctx.fillRect(x, GROUND_Y + 10, 2, 2);
+                }
+            }
+
+            for (let x = -groundOffset - GROUND_PATTERN; x < CANVAS_WIDTH + 10; x += 24) {
+                const idx = Math.floor((x + groundOffset) / 24);
+                if (idx % 2 === 0) {
+                    ctx.fillRect(x, GROUND_Y + 18, 3, 2);
+                }
+            }
+        }
+
+        function drawStaticBackground() {
+            if (!staticBackgroundCanvas) {
+                staticBackgroundCanvas = buildStaticBackground();
+            }
+            ctx.drawImage(staticBackgroundCanvas, 0, 0);
+        }
+
+        function updateHud() {
+            scoreDisplay.textContent = `SCORE: ${score}`;
+            pigeonsDisplay.textContent = `POMBAS: ${pigeonsCaptured}`;
+        }
+
+        function resetGame() {
+            score = 0;
+            pigeonsCaptured = 0;
+            distance = 0;
+            baseSpeed = 6;
+            currentSpeed = baseSpeed;
+            speedMultiplier = 1;
+            slowDownTimer = 0;
+            nextPigeonScoreTarget = 500;
+
+            robot.isDucking = false;
+            robot.height = robot.normalHeight;
+            robot.y = GROUND_Y - robot.height;
+            robot.vy = 0;
+            robot.isGrounded = true;
+
+            obstacles = [];
+            pigeons = [];
+            groundOffset = 0;
+            updateHud();
+            speedDebuffIndicator.classList.add('hidden');
+            pauseOverlay.classList.remove('active');
+        }
+
+        function spawnObstacle() {
+            const rand = Math.random();
+            const type = rand < 0.4 ? 'drone' : (rand < 0.7 ? 'monitor' : 'robot');
+            const sprite = type === 'drone' ? sprDrone : (type === 'monitor' ? sprMonitor : sprRobotObs);
+            const width = sprite[0].length * CAT_SCALE;
+            const height = sprite.length * CAT_SCALE;
+
+            if (obstacles.length > 0) {
+                const last = obstacles[obstacles.length - 1];
+                if (CANVAS_WIDTH - last.x < 220) return;
+            }
+
+            const yPos = type === 'drone' ? GROUND_Y - 75 : GROUND_Y - height;
+
+            obstacles.push({
+                x: CANVAS_WIDTH,
+                y: yPos,
+                width,
+                height,
+                sprite
+            });
+        }
+
+        function spawnPigeon() {
+            const width = sprPigeon[0].length * CAT_SCALE;
+            const height = sprPigeon.length * CAT_SCALE;
+
+            pigeons.push({
+                x: CANVAS_WIDTH,
+                y: GROUND_Y - 150,
+                width,
+                height,
+                sprite: sprPigeon
+            });
+        }
+
+        function checkCollision(rect1, rect2) {
+            return (
+                rect1.x < rect2.x + rect2.width &&
+                rect1.x + rect1.width > rect2.x &&
+                rect1.y < rect2.y + rect2.height &&
+                rect1.y + rect1.height > rect2.y
+            );
+        }
+
+        function updatePlaying() {
+            frames++;
+            distance += currentSpeed;
+            score = Math.floor(distance / 20);
+            updateHud();
+
+            if (score <= 800) {
+                const speedTiers = Math.floor(score / 50);
+                baseSpeed = 6 * Math.pow(1.05, speedTiers);
+            } else if (score <= 1000) {
+                baseSpeed = 6 * Math.pow(1.05, 16);
+            } else {
+                const speedAt800 = 6 * Math.pow(1.05, 16);
+                const extraTiers = Math.floor((score - 1000) / 50);
+                baseSpeed = speedAt800 * Math.pow(1.01, extraTiers);
+            }
+
+            if (slowDownTimer > 0) {
+                slowDownTimer--;
+                speedMultiplier = 0.6;
+                speedDebuffIndicator.classList.remove('hidden');
+            } else {
+                speedMultiplier = 1;
+                speedDebuffIndicator.classList.add('hidden');
+            }
+
+            currentSpeed = baseSpeed * speedMultiplier;
+
+            robot.vy += robot.gravity;
+            robot.y += robot.vy;
+
+            if (robot.y >= GROUND_Y - robot.height) {
+                robot.y = GROUND_Y - robot.height;
+                robot.vy = 0;
+                robot.isGrounded = true;
+            } else {
+                robot.isGrounded = false;
+            }
+
+            if (robot.isGrounded) {
+                robot.animationTimer++;
+                const animThreshold = Math.max(2, Math.floor(60 / currentSpeed));
+                if (robot.animationTimer > animThreshold) {
+                    robot.runFrame = (robot.runFrame + 1) % 2;
+                    robot.animationTimer = 0;
+                }
+
+                if (robot.isDucking) {
+                    robot.height = robot.duckHeight;
+                    robot.y = GROUND_Y - robot.duckHeight;
+                } else {
+                    robot.height = robot.normalHeight;
+                    robot.y = GROUND_Y - robot.normalHeight;
+                }
+            } else {
+                robot.runFrame = 0;
+                robot.height = robot.normalHeight;
+            }
+
+            updateGroundScroll(currentSpeed);
+
+            if (frames % Math.floor(70 / speedMultiplier) === 0 && Math.random() < 0.8) {
+                spawnObstacle();
+            }
+
+            for (let i = 0; i < obstacles.length; i++) {
+                obstacles[i].x -= currentSpeed;
+
+                const hitBox1 = {
+                    x: robot.x + 10,
+                    y: robot.y + 10,
+                    width: robot.width - 20,
+                    height: robot.height - 10
+                };
+                const hitBox2 = {
+                    x: obstacles[i].x + 10,
+                    y: obstacles[i].y + 10,
+                    width: obstacles[i].width - 20,
+                    height: obstacles[i].height - 10
+                };
+
+                if (checkCollision(hitBox1, hitBox2)) {
+                    gameOver();
+                    return;
+                }
+            }
+
+            obstacles = obstacles.filter(obs => obs.x + obs.width > 0);
+
+            if (score >= nextPigeonScoreTarget) {
+                spawnPigeon();
+                nextPigeonScoreTarget += 500;
+            }
+
+            for (let i = 0; i < pigeons.length; i++) {
+                pigeons[i].x -= currentSpeed;
+                pigeons[i].y += Math.sin(frames * 0.1) * 1.5;
+
+                if (checkCollision(robot, pigeons[i])) {
+                    pigeonsCaptured++;
+                    slowDownTimer = 300;
+                    pigeons.splice(i, 1);
+                    i--;
+                    updateHud();
+                }
+            }
+
+            pigeons = pigeons.filter(pigeon => pigeon.x + pigeon.width > 0);
+        }
+
+        function drawPlaying() {
+            drawStaticBackground();
+            drawGround();
+
+            let activeSprite = robot.runFrame === 0 ? sprCatRun1 : sprCatRun2;
+            if (robot.isDucking && robot.isGrounded) {
+                activeSprite = sprCatDuck1;
+            } else if (!robot.isGrounded) {
+                activeSprite = sprCatRun1;
+            }
+
+            const drawY = robot.isGrounded ? GROUND_Y - 12 * CAT_SCALE : robot.y;
+            drawSprite(activeSprite, robot.x, drawY, CAT_SCALE);
+
+            for (const obs of obstacles) {
+                drawSprite(obs.sprite, obs.x, obs.y, CAT_SCALE);
+            }
+
+            for (const pigeon of pigeons) {
+                drawSprite(pigeon.sprite, pigeon.x, pigeon.y, CAT_SCALE);
+            }
+        }
+
+        function gameLoop() {
+            if (gameState === 'PLAYING') {
+                updatePlaying();
+                drawPlaying();
+            } else if (gameState === 'PAUSED') {
+                drawPlaying();
+            }
+            requestAnimationFrame(gameLoop);
+        }
+
+        function jump() {
+            if (gameState === 'PLAYING' && robot.isGrounded) {
+                robot.vy = robot.jumpPower;
+                robot.isGrounded = false;
+                robot.isDucking = false;
+            }
+        }
+
+        function duck(isDucking) {
+            if (gameState === 'PLAYING') {
+                robot.isDucking = isDucking;
+                if (isDucking && !robot.isGrounded) {
+                    robot.vy += 2;
+                }
+            }
+        }
+
+        function setScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+        }
+
+        function pauseGame() {
+            if (gameState !== 'PLAYING') return;
+            gameState = 'PAUSED';
+            pauseOverlay.classList.add('active');
+        }
+
+        function resumeGame() {
+            if (gameState !== 'PAUSED') return;
+            gameState = 'PLAYING';
+            pauseOverlay.classList.remove('active');
+        }
+
+        function startGame() {
+            const name = playerNameInput.value.trim().toUpperCase() || 'PLAYER';
+            playerName = name;
+            setScreen('hud-screen');
+            resetGame();
+            gameState = 'PLAYING';
+        }
+
+        function gameOver() {
+            gameState = 'GAMEOVER';
+            finalScoreVal.textContent = score;
+            finalPigeonsVal.textContent = pigeonsCaptured;
+            pauseOverlay.classList.remove('active');
+            setScreen('game-over-screen');
+            saveScore(playerName, score);
+        }
+
+        function saveScore(name, playerScore) {
+            const leaderboard = JSON.parse(localStorage.getItem(LEADERBOARD_KEY) || '[]');
+            leaderboard.push({ name, score: playerScore });
+            leaderboard.sort((a, b) => b.score - a.score);
+            localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(leaderboard.slice(0, 10)));
+        }
+
+        function loadLeaderboard() {
+            const leaderboard = JSON.parse(localStorage.getItem(LEADERBOARD_KEY) || '[]');
+            leaderboardList.innerHTML = '';
+
+            if (leaderboard.length === 0) {
+                const li = document.createElement('li');
+                li.className = 'empty-row';
+                li.textContent = 'NO SCORES YET';
+                leaderboardList.appendChild(li);
+                return;
+            }
+
+            leaderboard.forEach((entry, index) => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <span>${index + 1}. ${entry.name}</span>
+                    <span class="rank-score">${entry.score}</span>
+                `;
+                leaderboardList.appendChild(li);
+            });
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Escape') {
+                if (gameState === 'PLAYING') pauseGame();
+                else if (gameState === 'PAUSED') resumeGame();
+                return;
+            }
+
+            if ((e.code === 'Space' || e.code === 'ArrowUp') && gameState === 'PLAYING') {
+                e.preventDefault();
+                jump();
+            } else if ((e.code === 'ArrowDown' || e.code === 'KeyS') && gameState === 'PLAYING') {
+                duck(true);
+            } else if (e.code === 'Enter') {
+                if (gameState === 'START') startGame();
+                else if (gameState === 'GAMEOVER') restartBtn.click();
+                else if (gameState === 'PAUSED') resumeGame();
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if ((e.code === 'ArrowDown' || e.code === 'KeyS') && gameState === 'PLAYING') {
+                duck(false);
+            }
+        });
+
+        canvas.addEventListener('touchstart', (e) => {
+            if (gameState !== 'PLAYING') return;
+
+            const touchX = e.touches[0].clientX;
+            if (touchX < window.innerWidth / 2) duck(true);
+            else jump();
+            e.preventDefault();
+        });
+
+        canvas.addEventListener('touchend', (e) => {
+            if (gameState === 'PLAYING') {
+                duck(false);
+                e.preventDefault();
+            }
+        });
+
+        startBtn.addEventListener('click', startGame);
+        restartBtn.addEventListener('click', () => {
+            loadLeaderboard();
+            setScreen('start-screen');
+            gameState = 'START';
+        });
+        pauseBtn.addEventListener('click', pauseGame);
+        resumeBtn.addEventListener('click', resumeGame);
+
+        drawStartCat();
+        loadLeaderboard();
+        requestAnimationFrame(gameLoop);
+    </script>
 </body>
 </html>
