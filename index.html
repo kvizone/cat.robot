@@ -1151,18 +1151,20 @@
             }
         });
 
-        const TOUCH_DUCK_THRESHOLD = 50;
+        const TOUCH_SWIPE_THRESHOLD = 50;
         const TOUCH_TAP_MAX_MS = 250;
         let touchStartY = null;
         let touchStartTime = 0;
         let touchIsDucking = false;
         let touchDidSlide = false;
+        let touchDidJump = false;
 
         function resetTouchState() {
             touchStartY = null;
             touchStartTime = 0;
             touchIsDucking = false;
             touchDidSlide = false;
+            touchDidJump = false;
         }
 
         canvas.addEventListener('touchstart', (e) => {
@@ -1172,6 +1174,7 @@
             touchStartTime = Date.now();
             touchIsDucking = false;
             touchDidSlide = false;
+            touchDidJump = false;
             e.preventDefault();
         }, { passive: false });
 
@@ -1179,11 +1182,22 @@
             if (gameState !== 'PLAYING' || touchStartY === null) return;
 
             const deltaY = e.touches[0].clientY - touchStartY;
-            if (deltaY >= TOUCH_DUCK_THRESHOLD) {
+
+            if (deltaY >= TOUCH_SWIPE_THRESHOLD) {
                 touchDidSlide = true;
                 if (!touchIsDucking) {
                     touchIsDucking = true;
                     duck(true);
+                }
+            } else if (deltaY <= -TOUCH_SWIPE_THRESHOLD) {
+                touchDidSlide = true;
+                if (touchIsDucking) {
+                    touchIsDucking = false;
+                    duck(false);
+                }
+                if (!touchDidJump) {
+                    touchDidJump = true;
+                    jump();
                 }
             } else if (touchIsDucking) {
                 touchIsDucking = false;
@@ -1205,8 +1219,12 @@
 
             if (touchIsDucking) {
                 duck(false);
-            } else if (!touchDidSlide && touchDuration <= TOUCH_TAP_MAX_MS && deltaY < TOUCH_DUCK_THRESHOLD) {
-                jump();
+            } else if (!touchDidJump) {
+                const isTap = touchDuration <= TOUCH_TAP_MAX_MS && Math.abs(deltaY) < TOUCH_SWIPE_THRESHOLD;
+                const isSwipeUp = deltaY <= -TOUCH_SWIPE_THRESHOLD;
+                if (isTap || isSwipeUp) {
+                    jump();
+                }
             }
 
             resetTouchState();
