@@ -1652,5 +1652,78 @@
         tryPlayStartScreenSound();
         requestAnimationFrame(gameLoop);
     </script>
+<!-- 1. Importando as ferramentas do Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+
+<script>
+  // 2. Suas configurações exclusivas que peguei do seu print!
+  const firebaseConfig = {
+    apiKey: "AIzaSyDWJYvcmBwxcQkwTiejdb1PlyfKf6gWzHM",
+    authDomain: "robot-runner-588b0.firebaseapp.com",
+    databaseURL: "https://robot-runner-588b0-default-rtdb.firebaseio.com",
+    projectId: "robot-runner-588b0",
+    storageBucket: "robot-runner-588b0.firebasestorage.app",
+    messagingSenderId: "975056817544",
+    appId: "1:97506817544:web:5eae27044fea3e804d3e3d",
+    measurementId: "G-X1GV3HK9KK"
+  };
+
+  // Inicializa o Firebase no seu jogo
+  firebase.initializeApp(firebaseConfig);
+  const database = firebase.database();
+
+  // 3. FUNÇÃO PARA SALVAR A PONTUAÇÃO
+  // Chame essa função quando o robozinho colidir e o jogo acabar!
+  function salvarPontuacao(nomeJogador, pontos) {
+    database.ref('ranking/').push({
+      nome: nomeJogador,
+      pontuacao: Number(pontos), // Garante que é um número para ordenar certo
+      data: new Date().toISOString()
+    }).then(() => {
+      console.log("Pontuação salva com sucesso!");
+      atualizarTabelaRanking(); // Atualiza a tabela automaticamente na tela
+    }).catch((error) => {
+      console.error("Erro ao salvar:", error);
+    });
+  }
+
+  // 4. FUNÇÃO PARA BUSCAR O RANKING E COLOCAR NA TABELA
+  // Chame essa função assim que a página carregar ou quando abrir a tela de Game Over
+  function atualizarTabelaRanking() {
+    // Busca os maiores pontos ordenados, limitando aos 10 melhores
+    database.ref('ranking/').orderByChild('pontuacao').limitToLast(10).once('value', (snapshot) => {
+      let listaRanking = [];
+      
+      snapshot.forEach((childSnapshot) => {
+        listaRanking.push(childSnapshot.val());
+      });
+
+      // O Firebase traz do menor para o maior, então invertemos para o maior ficar em 1º
+      listaRanking.reverse();
+
+      // ATENÇÃO: Troque 'ID_DA_SUA_TABELA' pelo ID real da sua tabela HTML (ou do <tbody> dela)
+      const tabela = document.getElementById('rankingBody'); 
+      
+      if(tabela) {
+        tabela.innerHTML = ""; // Limpa o ranking antigo para não duplicar
+
+        listaRanking.forEach((jogador, index) => {
+          tabela.innerHTML += `
+            <tr>
+              <td>${index + 1}º</td>
+              <td>${jogador.nome}</td>
+              <td>${jogador.pontuacao} pts</td>
+            </tr>
+          `;
+        });
+      }
+    });
+  }
+
+  // Executa a busca do ranking assim que o jogo abre para já mostrar o placar atualizado
+  window.onload = atualizarTabelaRanking;
+</script>
+    
 </body>
 </html>
