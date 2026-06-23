@@ -1475,6 +1475,7 @@
             pauseOverlay.classList.remove('active');
             setScreen('game-over-screen');
             saveScore(playerName, score);
+            salvarPontuacao(playerName, score);
         }
 
         function saveScore(name, playerScore) {
@@ -1718,6 +1719,7 @@
           `;
         });
       }
+    atualizarTabelaRanking();
     });
   }
 
