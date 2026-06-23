@@ -1033,7 +1033,7 @@
 
         let obstacles = [];
         let pigeons = [];
-        let nextPigeonScoreTarget = 500;
+        let nextPigeonScoreTarget = 100;
 
         function drawSpriteWithPalette(sprite, context, x, y, scale, palette) {
             for (let r = 0; r < sprite.length; r++) {
@@ -1220,7 +1220,7 @@
             currentSpeed = baseSpeed;
             speedMultiplier = 1;
             slowDownTimer = 0;
-            nextPigeonScoreTarget = 500;
+            nextPigeonScoreTarget = 100;
 
             robot.isDucking = false;
             robot.height = robot.normalHeight;
@@ -1372,7 +1372,7 @@
 
             if (score >= nextPigeonScoreTarget) {
                 spawnPigeon();
-                nextPigeonScoreTarget += 500;
+                nextPigeonScoreTarget += 100;
             }
 
             for (let i = 0; i < pigeons.length; i++) {
