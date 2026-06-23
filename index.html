@@ -1658,7 +1658,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
 
 <script>
-  // 2. Suas configurações exclusivas que peguei do seu print!
+  // 2. Configurações exclusivas do seu projeto robot runner
   const firebaseConfig = {
     apiKey: "AIzaSyDWJYvcmBwxcQkwTiejdb1PlyfKf6gWzHM",
     authDomain: "robot-runner-588b0.firebaseapp.com",
@@ -1674,23 +1674,21 @@
   firebase.initializeApp(firebaseConfig);
   const database = firebase.database();
 
-  // 3. FUNÇÃO PARA SALVAR A PONTUAÇÃO
-  // Chame essa função quando o robozinho colidir e o jogo acabar!
+  // 3. FUNÇÃO PARA SALVAR A PONTUAÇÃO NO BANCO ONLINE
   function salvarPontuacao(nomeJogador, pontos) {
     database.ref('ranking/').push({
       nome: nomeJogador,
       pontuacao: Number(pontos), // Garante que é um número para ordenar certo
       data: new Date().toISOString()
     }).then(() => {
-      console.log("Pontuação salva com sucesso!");
-      atualizarTabelaRanking(); // Atualiza a tabela automaticamente na tela
+      console.log("Pontuação salva no Firebase com sucesso!");
+      atualizarTabelaRanking(); // Atualiza a lista na tela na mesma hora
     }).catch((error) => {
-      console.error("Erro ao salvar:", error);
+      console.error("Erro ao salvar no Firebase:", error);
     });
   }
 
-  // 4. FUNÇÃO PARA BUSCAR O RANKING E COLOCAR NA TABELA
-  // Chame essa função assim que a página carregar ou quando abrir a tela de Game Over
+  // 4. FUNÇÃO PARA BUSCAR O RANKING E EXIBIR NO SEU LAYOUT RETRÔ
   function atualizarTabelaRanking() {
     // Busca os maiores pontos ordenados, limitando aos 10 melhores
     database.ref('ranking/').orderByChild('pontuacao').limitToLast(10).once('value', (snapshot) => {
@@ -1700,31 +1698,41 @@
         listaRanking.push(childSnapshot.val());
       });
 
-      // O Firebase traz do menor para o maior, então invertemos para o maior ficar em 1º
+      // Inverte para o maior score ficar em 1º lugar
       listaRanking.reverse();
 
-      // ATENÇÃO: Troque 'ID_DA_SUA_TABELA' pelo ID real da sua tabela HTML (ou do <tbody> dela)
-      const tabela = document.getElementById('rankingBody'); 
+      // CORREÇÃO: Buscando o elemento correto do seu jogo (leaderboard-list)
+      const tabela = document.getElementById('leaderboard-list'); 
       
       if(tabela) {
-        tabela.innerHTML = ""; // Limpa o ranking antigo para não duplicar
+        tabela.innerHTML = ""; // Limpa a lista antiga para não duplicar
+
+        if (listaRanking.length === 0) {
+          tabela.innerHTML = '<li class="empty-row">NO SCORES YET</li>';
+          return;
+        }
 
         listaRanking.forEach((jogador, index) => {
+          // CORREÇÃO: Gerando as tags <li> e <span> originais do seu design pixel art
           tabela.innerHTML += `
-            <tr>
-              <td>${index + 1}º</td>
-              <td>${jogador.nome}</td>
-              <td>${jogador.pontuacao} pts</td>
-            </tr>
+            <li>
+              <span>${index + 1}. ${jogador.nome}</span>
+              <span class="rank-score">${jogador.pontuacao}</span>
+            </li>
           `;
         });
       }
-    atualizarTabelaRanking();
     });
   }
 
-  // Executa a busca do ranking assim que o jogo abre para já mostrar o placar atualizado
-  window.onload = atualizarTabelaRanking;
+  // 5. A LINHA MÁGICA: Substitui a função antiga do jogo. 
+  // Sempre que o jogo mandar atualizar o ranking, ele vai usar o Firebase!
+  loadLeaderboard = function() {
+    atualizarTabelaRanking();
+  };
+
+  // Carrega o ranking global do Firebase assim que a página abrir
+  window.addEventListener('load', atualizarTabelaRanking);
 </script>
     
 </body>
