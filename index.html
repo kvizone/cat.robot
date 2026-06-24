@@ -505,6 +505,20 @@
             cursor: not-allowed;
         }
 
+        .scrap-status {
+            font-size: 7px;
+            line-height: 1.6;
+            text-align: right;
+            min-height: 12px;
+            margin-top: -6px;
+            margin-bottom: 6px;
+            color: var(--dark-red);
+        }
+
+        .scrap-status.success {
+            color: var(--fg-color);
+        }
+
         .scrap-list {
             display: flex;
             flex-direction: column;
@@ -713,6 +727,7 @@
                         </div>
 
                         <button id="scrap-send-btn" class="scrap-send-btn" type="submit" disabled>Enviar</button>
+                        <p id="scrap-status" class="scrap-status" aria-live="polite"></p>
                     </form>
 
                     <div id="scrap-list" class="scrap-list" aria-live="polite">
@@ -774,6 +789,7 @@
         const scrapCharCount = document.getElementById('scrap-char-count');
         const scrapSendBtn = document.getElementById('scrap-send-btn');
         const scrapList = document.getElementById('scrap-list');
+        const scrapStatus = document.getElementById('scrap-status');
 
         const SCRAP_MAX_LENGTH = 75;
         const SCRAP_LIST_LIMIT = 20;
@@ -1904,15 +1920,28 @@
             scrapSendBtn.disabled = !(nome && mensagem);
         }
 
+        function setScrapStatus(message, type = 'error') {
+            if (!scrapStatus) return;
+            scrapStatus.textContent = message;
+            scrapStatus.classList.toggle('success', type === 'success');
+        }
+
         function submitScrap(event) {
             event.preventDefault();
 
             const nome = scrapNameInput.value.trim();
             const mensagem = scrapMessageInput.value.trim();
-            if (!nome || !mensagem || scrapSendBtn.disabled) return;
+            if (!nome || !mensagem) return;
+
+            if (typeof window.publicarScrapFirebase !== 'function') {
+                setScrapStatus('Firebase não carregou. Recarregue a página.');
+                return;
+            }
 
             playButtonPlim();
+            setScrapStatus('');
             scrapSendBtn.disabled = true;
+            scrapSendBtn.textContent = 'Enviando...';
 
             const novoScrap = {
                 nome,
@@ -1920,19 +1949,20 @@
                 data: new Date().toISOString()
             };
 
-            const publicacao = window.publicarScrapFirebase(novoScrap);
-
-            if (publicacao && typeof publicacao.finally === 'function') {
-                publicacao.finally(() => {
+            window.publicarScrapFirebase(novoScrap)
+                .then(() => {
                     scrapMessageInput.value = '';
+                    setScrapStatus('Scrap enviado!', 'success');
+                })
+                .catch((error) => {
+                    console.error('Falha ao enviar scrap:', error);
+                    setScrapStatus('Erro ao enviar. Confira as Regras do Firebase.');
+                })
+                .finally(() => {
+                    scrapSendBtn.textContent = 'Enviar';
                     updateScrapFormState();
                     scrapMessageInput.focus();
                 });
-            } else {
-                scrapMessageInput.value = '';
-                updateScrapFormState();
-                scrapMessageInput.focus();
-            }
         }
 
         function initScrapSection() {
@@ -2240,34 +2270,34 @@
   const SCRAP_LIST_LIMIT = 20;
 
   window.iniciarScrapsFirebase = function() {
-    database.ref('scraps/')
-      .orderByChild('data')
-      .limitToLast(SCRAP_LIST_LIMIT)
-      .on('value', (snapshot) => {
-        const lista = [];
+    database.ref('scraps/').on('value', (snapshot) => {
+      const lista = [];
 
-        snapshot.forEach((childSnapshot) => {
-          lista.push(childSnapshot.val());
-        });
-
-        lista.reverse();
-
-        if (typeof window.atualizarListaScraps === 'function') {
-          window.atualizarListaScraps(lista);
+      snapshot.forEach((childSnapshot) => {
+        const scrap = childSnapshot.val();
+        if (scrap && scrap.nome && scrap.mensagem && scrap.data) {
+          lista.push(scrap);
         }
-      }, (error) => {
-        console.error('Erro ao carregar scraps:', error);
       });
+
+      lista.sort((a, b) => new Date(b.data) - new Date(a.data));
+
+      if (typeof window.atualizarListaScraps === 'function') {
+        window.atualizarListaScraps(lista.slice(0, SCRAP_LIST_LIMIT));
+      }
+    }, (error) => {
+      console.error('Erro ao carregar scraps:', error);
+    });
   };
 
   window.publicarScrapFirebase = function(scrap) {
     return database.ref('scraps/').push({
-      nome: scrap.nome,
-      mensagem: scrap.mensagem,
+      nome: String(scrap.nome).slice(0, 15),
+      mensagem: String(scrap.mensagem).slice(0, 75),
       data: scrap.data
-    }).catch((error) => {
-      console.error('Erro ao publicar scrap:', error);
-      alert('Não foi possível enviar o scrap. Verifique as regras do Firebase.');
+    }).then((ref) => {
+      console.log('Scrap salvo no Firebase:', ref.key);
+      return ref;
     });
   };
 
