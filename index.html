@@ -535,36 +535,43 @@
         .scrap-list {
             display: flex;
             flex-direction: column;
-            gap: 16px;
+            gap: 0;
             max-height: 520px;
             overflow-y: auto;
-            padding-right: 4px;
             width: 100%;
-            max-width: 400px;
-            margin-left: auto;
-            margin-right: auto;
+            padding: 0 12px;
         }
 
-        .scrap-card {
-            background-color: var(--off-white);
-            border: 4px solid var(--fg-color);
-            border-radius: 10px;
-            padding: 14px 16px;
-            box-shadow: 4px 4px 0 rgba(10, 10, 22, 0.55);
+        .scrap-entry {
+            padding: 14px 4px;
+            border-bottom: 2px dashed var(--fg-color);
         }
 
-        .scrap-card-name {
-            font-size: 9px;
-            line-height: 1.5;
+        .scrap-entry:last-child {
+            border-bottom: none;
+        }
+
+        .scrap-entry-name {
+            font-size: 8px;
+            line-height: 1.6;
+            color: var(--dark-red);
+            text-transform: uppercase;
+        }
+
+        .scrap-entry-time {
+            font-size: 7px;
+            line-height: 1.6;
             color: var(--fg-color);
-            margin-bottom: 8px;
+            margin-bottom: 6px;
         }
 
-        .scrap-card-message {
+        .scrap-entry-message {
             font-size: 8px;
             line-height: 1.8;
             color: var(--fg-color);
+            text-transform: uppercase;
             word-break: break-word;
+            margin: 0;
         }
 
         .scrap-empty {
@@ -681,11 +688,12 @@
                 font-size: 7px;
             }
 
-            .scrap-card-name {
-                font-size: 8px;
+            .scrap-entry-name {
+                font-size: 7px;
             }
 
-            .scrap-card-message,
+            .scrap-entry-time,
+            .scrap-entry-message,
             .scrap-empty {
                 font-size: 7px;
             }
@@ -2031,6 +2039,13 @@
                 .replace(/'/g, '&#39;');
         }
 
+        function formatScrapTime(date) {
+            const d = date instanceof Date ? date : new Date(date);
+            const hh = String(d.getHours()).padStart(2, '0');
+            const mm = String(d.getMinutes()).padStart(2, '0');
+            return `${hh}:${mm}`;
+        }
+
         function renderScrapList() {
             scrapList.innerHTML = '';
 
@@ -2040,13 +2055,14 @@
             }
 
             scraps.slice(0, SCRAP_LIST_LIMIT).forEach((scrap) => {
-                const card = document.createElement('article');
-                card.className = 'scrap-card';
-                card.innerHTML = `
-                    <div class="scrap-card-name">${escapeHtml(scrap.nome)}:</div>
-                    <p class="scrap-card-message">${escapeHtml(scrap.mensagem)}</p>
+                const entry = document.createElement('article');
+                entry.className = 'scrap-entry';
+                entry.innerHTML = `
+                    <div class="scrap-entry-name">${escapeHtml(scrap.nome)}</div>
+                    <div class="scrap-entry-time">${formatScrapTime(scrap.data)}</div>
+                    <p class="scrap-entry-message">${escapeHtml(scrap.mensagem)}</p>
                 `;
-                scrapList.appendChild(card);
+                scrapList.appendChild(entry);
             });
         }
 
