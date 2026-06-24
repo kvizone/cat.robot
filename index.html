@@ -763,6 +763,131 @@
         </div>
     </div>
 
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+    <script>
+        (function initFirebase() {
+            if (typeof firebase === 'undefined') {
+                console.error('[Robot Runner] SDK do Firebase não carregou. Verifique sua conexão.');
+                return;
+            }
+
+            const firebaseConfig = {
+                apiKey: "AIzaSyDWJYvcmBwxcQkwTiejdb1PlyfKf6gWzHM",
+                authDomain: "robot-runner-588b0.firebaseapp.com",
+                databaseURL: "https://robot-runner-588b0-default-rtdb.firebaseio.com",
+                projectId: "robot-runner-588b0",
+                storageBucket: "robot-runner-588b0.firebasestorage.app",
+                messagingSenderId: "975056817544",
+                appId: "1:97506817544:web:5eae27044fea3e804d3e3d",
+                measurementId: "G-X1GV3HK9KK"
+            };
+
+            try {
+                firebase.initializeApp(firebaseConfig);
+            } catch (error) {
+                if (!/already exists/i.test(error.message)) {
+                    console.error('[Robot Runner] Erro ao iniciar Firebase:', error);
+                    return;
+                }
+            }
+
+            const database = firebase.database();
+            window.robotRunnerDatabase = database;
+            const SCRAP_LIST_LIMIT = 20;
+
+            database.ref('.info/connected').on('value', (snapshot) => {
+                console.log('[Robot Runner] Firebase conectado:', snapshot.val() === true);
+            });
+
+            window.salvarPontuacao = function(nomeJogador, pontos) {
+                return database.ref('ranking/').push({
+                    nome: nomeJogador,
+                    pontuacao: Number(pontos),
+                    data: new Date().toISOString()
+                }).then(() => {
+                    console.log('[Robot Runner] Pontuação salva no Firebase');
+                    window.carregarRankingFirebase();
+                }).catch((error) => {
+                    console.error('[Robot Runner] Erro ao salvar pontuação:', error.code, error.message);
+                });
+            };
+
+            window.carregarRankingFirebase = function() {
+                database.ref('ranking/').orderByChild('pontuacao').limitToLast(10).once('value', (snapshot) => {
+                    const listaRanking = [];
+                    snapshot.forEach((childSnapshot) => {
+                        listaRanking.push(childSnapshot.val());
+                    });
+                    listaRanking.reverse();
+
+                    const tabela = document.getElementById('leaderboard-list');
+                    if (!tabela) return;
+
+                    tabela.innerHTML = '';
+
+                    if (listaRanking.length === 0) {
+                        tabela.innerHTML = '<li class="empty-row">NO SCORES YET</li>';
+                        return;
+                    }
+
+                    listaRanking.forEach((jogador, index) => {
+                        tabela.innerHTML += `
+                            <li>
+                              <span>${index + 1}. ${jogador.nome}</span>
+                              <span class="rank-score">${jogador.pontuacao}</span>
+                            </li>
+                        `;
+                    });
+                }).catch((error) => {
+                    console.error('[Robot Runner] Erro ao ler ranking:', error.code, error.message);
+                });
+            };
+
+            window.salvarScrap = function(scrap) {
+                return database.ref('scraps/').push({
+                    nome: String(scrap.nome).slice(0, 15),
+                    mensagem: String(scrap.mensagem).slice(0, 75),
+                    data: new Date().toISOString()
+                }).then((ref) => {
+                    console.log('[Robot Runner] Scrap salvo:', ref.key);
+                    return ref;
+                }).catch((error) => {
+                    console.error('[Robot Runner] Erro ao salvar scrap:', error.code, error.message);
+                    throw error;
+                });
+            };
+
+            window.iniciarListenerScraps = function() {
+                database.ref('scraps/').on('value', (snapshot) => {
+                    const lista = [];
+                    snapshot.forEach((childSnapshot) => {
+                        const scrap = childSnapshot.val();
+                        if (scrap && scrap.nome && scrap.mensagem && scrap.data) {
+                            lista.push(scrap);
+                        }
+                    });
+                    lista.sort((a, b) => new Date(b.data) - new Date(a.data));
+                    if (typeof window.atualizarListaScraps === 'function') {
+                        window.atualizarListaScraps(lista.slice(0, SCRAP_LIST_LIMIT));
+                    }
+                }, (error) => {
+                    console.error('[Robot Runner] Listener scraps falhou:', error.code, error.message);
+                });
+            };
+
+            window.addEventListener('load', () => {
+                window.carregarRankingFirebase();
+                if (typeof window.iniciarListenerScraps === 'function') {
+                    window.iniciarListenerScraps();
+                }
+            });
+
+            window.firebaseReady = true;
+            console.log('[Robot Runner] Firebase pronto — ranking + scraps v3');
+        })();
+    </script>
+
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
@@ -1862,7 +1987,9 @@
             pauseOverlay.classList.remove('active');
             setScreen('game-over-screen');
             saveScore(playerName, score);
-            salvarPontuacao(playerName, score);
+            if (typeof window.salvarPontuacao === 'function') {
+                window.salvarPontuacao(playerName, score);
+            }
         }
 
         function saveScore(name, playerScore) {
@@ -1926,43 +2053,81 @@
             scrapStatus.classList.toggle('success', type === 'success');
         }
 
-        function submitScrap(event) {
+        function aguardarFirebase(ms) {
+            return new Promise((resolve) => {
+                const limite = Date.now() + ms;
+
+                function verificar() {
+                    if (window.firebaseReady || (typeof firebase !== 'undefined' && firebase.apps.length > 0)) {
+                        resolve(true);
+                        return;
+                    }
+                    if (Date.now() >= limite) {
+                        resolve(false);
+                        return;
+                    }
+                    setTimeout(verificar, 50);
+                }
+
+                verificar();
+            });
+        }
+
+        function enviarScrapParaFirebase(nome, mensagem) {
+            const payload = {
+                nome: String(nome).slice(0, 15),
+                mensagem: String(mensagem).slice(0, 75),
+                data: new Date().toISOString()
+            };
+
+            if (typeof window.salvarScrap === 'function') {
+                return window.salvarScrap({ nome, mensagem });
+            }
+
+            if (window.robotRunnerDatabase) {
+                return window.robotRunnerDatabase.ref('scraps/').push(payload);
+            }
+
+            if (typeof firebase !== 'undefined' && firebase.apps.length > 0) {
+                return firebase.database().ref('scraps/').push(payload);
+            }
+
+            return Promise.reject(new Error('Firebase indisponível'));
+        }
+
+        async function submitScrap(event) {
             event.preventDefault();
 
             const nome = scrapNameInput.value.trim();
             const mensagem = scrapMessageInput.value.trim();
             if (!nome || !mensagem) return;
 
-            if (typeof window.publicarScrapFirebase !== 'function') {
-                setScrapStatus('Firebase não carregou. Recarregue a página.');
-                return;
-            }
-
             playButtonPlim();
             setScrapStatus('');
             scrapSendBtn.disabled = true;
             scrapSendBtn.textContent = 'Enviando...';
 
-            const novoScrap = {
-                nome,
-                mensagem,
-                data: new Date().toISOString()
-            };
+            const firebasePronto = await aguardarFirebase(4000);
+            if (!firebasePronto) {
+                setScrapStatus('Firebase não carregou. Verifique conexão e domínio autorizado.');
+                scrapSendBtn.textContent = 'Enviar';
+                updateScrapFormState();
+                return;
+            }
 
-            window.publicarScrapFirebase(novoScrap)
-                .then(() => {
-                    scrapMessageInput.value = '';
-                    setScrapStatus('Scrap enviado!', 'success');
-                })
-                .catch((error) => {
-                    console.error('Falha ao enviar scrap:', error);
-                    setScrapStatus('Erro ao enviar. Confira as Regras do Firebase.');
-                })
-                .finally(() => {
-                    scrapSendBtn.textContent = 'Enviar';
-                    updateScrapFormState();
-                    scrapMessageInput.focus();
-                });
+            try {
+                await enviarScrapParaFirebase(nome, mensagem);
+                scrapMessageInput.value = '';
+                setScrapStatus('Scrap enviado!', 'success');
+                scrapMessageInput.focus();
+            } catch (error) {
+                console.error('Falha ao enviar scrap:', error);
+                const detalhe = error.code || error.message || 'erro desconhecido';
+                setScrapStatus(`Erro: ${detalhe}`);
+            } finally {
+                scrapSendBtn.textContent = 'Enviar';
+                updateScrapFormState();
+            }
         }
 
         function initScrapSection() {
@@ -2012,6 +2177,11 @@
         };
 
         function loadLeaderboard() {
+            if (window.firebaseReady && typeof window.carregarRankingFirebase === 'function') {
+                window.carregarRankingFirebase();
+                return;
+            }
+
             const leaderboard = JSON.parse(localStorage.getItem(LEADERBOARD_KEY) || '[]');
             leaderboardList.innerHTML = '';
 
@@ -2185,124 +2355,6 @@
         tryPlayStartScreenSound();
         requestAnimationFrame(gameLoop);
     </script>
-<!-- 1. Importando as ferramentas do Firebase -->
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
-
-<script>
-  // 2. Configurações exclusivas do seu projeto robot runner
-  const firebaseConfig = {
-    apiKey: "AIzaSyDWJYvcmBwxcQkwTiejdb1PlyfKf6gWzHM",
-    authDomain: "robot-runner-588b0.firebaseapp.com",
-    databaseURL: "https://robot-runner-588b0-default-rtdb.firebaseio.com",
-    projectId: "robot-runner-588b0",
-    storageBucket: "robot-runner-588b0.firebasestorage.app",
-    messagingSenderId: "975056817544",
-    appId: "1:97506817544:web:5eae27044fea3e804d3e3d",
-    measurementId: "G-X1GV3HK9KK"
-  };
-
-  // Inicializa o Firebase no seu jogo
-  firebase.initializeApp(firebaseConfig);
-  const database = firebase.database();
-
-  // 3. FUNÇÃO PARA SALVAR A PONTUAÇÃO NO BANCO ONLINE
-  function salvarPontuacao(nomeJogador, pontos) {
-    database.ref('ranking/').push({
-      nome: nomeJogador,
-      pontuacao: Number(pontos), // Garante que é um número para ordenar certo
-      data: new Date().toISOString()
-    }).then(() => {
-      console.log("Pontuação salva no Firebase com sucesso!");
-      atualizarTabelaRanking(); // Atualiza a lista na tela na mesma hora
-    }).catch((error) => {
-      console.error("Erro ao salvar no Firebase:", error);
-    });
-  }
-
-  // 4. FUNÇÃO PARA BUSCAR O RANKING E EXIBIR NO SEU LAYOUT RETRÔ
-  function atualizarTabelaRanking() {
-    // Busca os maiores pontos ordenados, limitando aos 10 melhores
-    database.ref('ranking/').orderByChild('pontuacao').limitToLast(10).once('value', (snapshot) => {
-      let listaRanking = [];
-      
-      snapshot.forEach((childSnapshot) => {
-        listaRanking.push(childSnapshot.val());
-      });
-
-      // Inverte para o maior score ficar em 1º lugar
-      listaRanking.reverse();
-
-      // CORREÇÃO: Buscando o elemento correto do seu jogo (leaderboard-list)
-      const tabela = document.getElementById('leaderboard-list'); 
-      
-      if(tabela) {
-        tabela.innerHTML = ""; // Limpa a lista antiga para não duplicar
-
-        if (listaRanking.length === 0) {
-          tabela.innerHTML = '<li class="empty-row">NO SCORES YET</li>';
-          return;
-        }
-
-        listaRanking.forEach((jogador, index) => {
-          // CORREÇÃO: Gerando as tags <li> e <span> originais do seu design pixel art
-          tabela.innerHTML += `
-            <li>
-              <span>${index + 1}. ${jogador.nome}</span>
-              <span class="rank-score">${jogador.pontuacao}</span>
-            </li>
-          `;
-        });
-      }
-    });
-  }
-
-  // 5. A LINHA MÁGICA: Substitui a função antiga do jogo. 
-  // Sempre que o jogo mandar atualizar o ranking, ele vai usar o Firebase!
-  loadLeaderboard = function() {
-    atualizarTabelaRanking();
-  };
-
-  // Carrega o ranking global do Firebase assim que a página abrir
-  window.addEventListener('load', atualizarTabelaRanking);
-
-  // 6. SCRAPS — leitura em tempo real + publicação
-  const SCRAP_LIST_LIMIT = 20;
-
-  window.iniciarScrapsFirebase = function() {
-    database.ref('scraps/').on('value', (snapshot) => {
-      const lista = [];
-
-      snapshot.forEach((childSnapshot) => {
-        const scrap = childSnapshot.val();
-        if (scrap && scrap.nome && scrap.mensagem && scrap.data) {
-          lista.push(scrap);
-        }
-      });
-
-      lista.sort((a, b) => new Date(b.data) - new Date(a.data));
-
-      if (typeof window.atualizarListaScraps === 'function') {
-        window.atualizarListaScraps(lista.slice(0, SCRAP_LIST_LIMIT));
-      }
-    }, (error) => {
-      console.error('Erro ao carregar scraps:', error);
-    });
-  };
-
-  window.publicarScrapFirebase = function(scrap) {
-    return database.ref('scraps/').push({
-      nome: String(scrap.nome).slice(0, 15),
-      mensagem: String(scrap.mensagem).slice(0, 75),
-      data: scrap.data
-    }).then((ref) => {
-      console.log('Scrap salvo no Firebase:', ref.key);
-      return ref;
-    });
-  };
-
-  window.iniciarScrapsFirebase();
-</script>
     
 </body>
 </html>
