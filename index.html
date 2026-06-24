@@ -94,6 +94,16 @@
             justify-content: flex-start;
             overflow-y: auto;
             touch-action: pan-y;
+            padding: 0;
+            align-items: stretch;
+        }
+
+        .start-screen-main {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            padding: 20px 20px 0;
         }
 
         #start-screen .music-toggle-btn {
@@ -385,14 +395,13 @@
 
         .scrap-container {
             margin-top: 24px;
-            margin-bottom: 16px;
-            width: 90%;
-            max-width: 400px;
+            width: 100%;
+            max-width: none;
             background-color: #E9E3D9;
-            border: 4px solid var(--fg-color);
-            border-radius: 12px;
-            padding: 18px 16px 20px;
-            box-shadow: 4px 4px 0 var(--dark-blue);
+            border: none;
+            border-radius: 0;
+            padding: 24px 20px 32px;
+            box-shadow: none;
         }
 
         .scrap-title {
@@ -416,6 +425,10 @@
             flex-direction: column;
             gap: 12px;
             margin-bottom: 22px;
+            width: 100%;
+            max-width: 400px;
+            margin-left: auto;
+            margin-right: auto;
         }
 
         .scrap-field {
@@ -523,9 +536,13 @@
             display: flex;
             flex-direction: column;
             gap: 16px;
-            max-height: 420px;
+            max-height: 520px;
             overflow-y: auto;
             padding-right: 4px;
+            width: 100%;
+            max-width: 400px;
+            margin-left: auto;
+            margin-right: auto;
         }
 
         .scrap-card {
@@ -540,14 +557,7 @@
             font-size: 9px;
             line-height: 1.5;
             color: var(--fg-color);
-            margin-bottom: 6px;
-        }
-
-        .scrap-card-meta {
-            font-size: 7px;
-            line-height: 1.5;
-            color: rgba(10, 10, 22, 0.75);
-            margin-bottom: 10px;
+            margin-bottom: 8px;
         }
 
         .scrap-card-message {
@@ -645,6 +655,18 @@
                 padding: 16px;
             }
 
+            #start-screen {
+                padding: 0;
+            }
+
+            .start-screen-main {
+                padding: 16px 16px 0;
+            }
+
+            .scrap-container {
+                padding: 20px 16px 28px;
+            }
+
             .scrap-title {
                 font-size: 10px;
             }
@@ -663,14 +685,13 @@
                 font-size: 8px;
             }
 
-            .scrap-card-meta,
             .scrap-card-message,
             .scrap-empty {
                 font-size: 7px;
             }
 
             .scrap-list {
-                max-height: 320px;
+                max-height: 420px;
             }
         }
     </style>
@@ -693,6 +714,7 @@
                     </svg>
                 </button>
 
+                <div class="start-screen-main">
                 <div class="start-hero">
                     <canvas id="start-cat-canvas" width="80" height="84" aria-hidden="true"></canvas>
                     <h1>ROBOT RUNNER</h1>
@@ -708,6 +730,7 @@
                 <div class="leaderboard-container">
                     <h2>RANKING</h2>
                     <ul id="leaderboard-list"></ul>
+                </div>
                 </div>
 
                 <section class="scrap-container" aria-labelledby="scrap-title">
@@ -794,7 +817,7 @@
 
             const database = firebase.database();
             window.robotRunnerDatabase = database;
-            const SCRAP_LIST_LIMIT = 20;
+            const SCRAP_LIST_LIMIT = 30;
 
             database.ref('.info/connected').on('value', (snapshot) => {
                 console.log('[Robot Runner] Firebase conectado:', snapshot.val() === true);
@@ -917,7 +940,7 @@
         const scrapStatus = document.getElementById('scrap-status');
 
         const SCRAP_MAX_LENGTH = 75;
-        const SCRAP_LIST_LIMIT = 20;
+        const SCRAP_LIST_LIMIT = 30;
         let scraps = [];
 
         const MUSIC_BPM = 132;
@@ -1999,16 +2022,6 @@
             localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(leaderboard.slice(0, 10)));
         }
 
-        function formatScrapDate(date) {
-            const d = date instanceof Date ? date : new Date(date);
-            const hh = String(d.getHours()).padStart(2, '0');
-            const mm = String(d.getMinutes()).padStart(2, '0');
-            const dd = String(d.getDate()).padStart(2, '0');
-            const mo = String(d.getMonth() + 1).padStart(2, '0');
-            const yyyy = d.getFullYear();
-            return `${hh}:${mm} | ${dd}.${mo}.${yyyy}`;
-        }
-
         function escapeHtml(text) {
             return text
                 .replace(/&/g, '&amp;')
@@ -2031,7 +2044,6 @@
                 card.className = 'scrap-card';
                 card.innerHTML = `
                     <div class="scrap-card-name">${escapeHtml(scrap.nome)}:</div>
-                    <div class="scrap-card-meta">${formatScrapDate(scrap.data)}</div>
                     <p class="scrap-card-message">${escapeHtml(scrap.mensagem)}</p>
                 `;
                 scrapList.appendChild(card);
