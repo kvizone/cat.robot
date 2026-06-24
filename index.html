@@ -93,6 +93,7 @@
         #start-screen {
             justify-content: flex-start;
             overflow-y: auto;
+            touch-action: pan-y;
         }
 
         #start-screen .music-toggle-btn {
@@ -382,6 +383,174 @@
             white-space: nowrap;
         }
 
+        .scrap-container {
+            margin-top: 24px;
+            margin-bottom: 16px;
+            width: 90%;
+            max-width: 400px;
+            background-color: #E9E3D9;
+            border: 4px solid var(--fg-color);
+            border-radius: 12px;
+            padding: 18px 16px 20px;
+            box-shadow: 4px 4px 0 var(--dark-blue);
+        }
+
+        .scrap-title {
+            font-size: 11px;
+            line-height: 1.8;
+            text-align: center;
+            color: var(--fg-color);
+            margin-bottom: 8px;
+        }
+
+        .scrap-disclaimer {
+            font-size: 6px;
+            line-height: 1.7;
+            text-align: center;
+            color: rgba(10, 10, 22, 0.65);
+            margin-bottom: 18px;
+        }
+
+        .scrap-form {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 22px;
+        }
+
+        .scrap-field {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background-color: var(--off-white);
+            border: 3px solid var(--fg-color);
+            border-radius: 18px;
+            padding: 10px 16px;
+            min-height: 44px;
+        }
+
+        .scrap-field-message {
+            align-items: flex-start;
+            min-height: 52px;
+            padding-top: 12px;
+            padding-bottom: 12px;
+        }
+
+        .scrap-field label {
+            font-size: 8px;
+            line-height: 1.4;
+            color: var(--fg-color);
+            flex-shrink: 0;
+        }
+
+        .scrap-field input,
+        .scrap-field textarea {
+            flex: 1;
+            width: 100%;
+            border: none;
+            background: transparent;
+            color: var(--fg-color);
+            font-family: inherit;
+            font-size: 8px;
+            line-height: 1.6;
+            text-align: left;
+            outline: none;
+            resize: none;
+            min-height: 20px;
+            padding: 0;
+        }
+
+        .scrap-field textarea {
+            margin-top: 2px;
+        }
+
+        .scrap-field input::placeholder,
+        .scrap-field textarea::placeholder {
+            color: rgba(10, 10, 22, 0.35);
+        }
+
+        .scrap-char-count {
+            font-size: 6px;
+            line-height: 1;
+            color: rgba(10, 10, 22, 0.55);
+            flex-shrink: 0;
+            align-self: flex-end;
+        }
+
+        .scrap-send-btn {
+            align-self: flex-end;
+            background-color: var(--off-white);
+            color: var(--fg-color);
+            border: 3px solid var(--fg-color);
+            padding: 10px 18px;
+            font-family: inherit;
+            font-size: 9px;
+            cursor: pointer;
+            box-shadow: 3px 3px 0 var(--fg-color);
+            transition: transform 0.1s, background-color 0.1s, color 0.1s;
+        }
+
+        .scrap-send-btn:hover:not(:disabled) {
+            background-color: var(--fg-color);
+            color: var(--off-white);
+        }
+
+        .scrap-send-btn:active:not(:disabled) {
+            transform: translate(2px, 2px);
+            box-shadow: 1px 1px 0 var(--fg-color);
+        }
+
+        .scrap-send-btn:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+
+        .scrap-list {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            max-height: 420px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .scrap-card {
+            background-color: var(--off-white);
+            border: 4px solid var(--fg-color);
+            border-radius: 10px;
+            padding: 14px 16px;
+            box-shadow: 4px 4px 0 rgba(10, 10, 22, 0.55);
+        }
+
+        .scrap-card-name {
+            font-size: 9px;
+            line-height: 1.5;
+            color: var(--fg-color);
+            margin-bottom: 6px;
+        }
+
+        .scrap-card-meta {
+            font-size: 7px;
+            line-height: 1.5;
+            color: rgba(10, 10, 22, 0.75);
+            margin-bottom: 10px;
+        }
+
+        .scrap-card-message {
+            font-size: 8px;
+            line-height: 1.8;
+            color: var(--fg-color);
+            word-break: break-word;
+        }
+
+        .scrap-empty {
+            font-size: 8px;
+            line-height: 1.8;
+            text-align: center;
+            color: rgba(10, 10, 22, 0.55);
+            padding: 12px 8px;
+        }
+
         .final-score {
             font-size: 24px;
             margin-bottom: 16px;
@@ -461,6 +630,34 @@
             .screen {
                 padding: 16px;
             }
+
+            .scrap-title {
+                font-size: 10px;
+            }
+
+            .scrap-disclaimer {
+                font-size: 5px;
+            }
+
+            .scrap-field label,
+            .scrap-field input,
+            .scrap-field textarea {
+                font-size: 7px;
+            }
+
+            .scrap-card-name {
+                font-size: 8px;
+            }
+
+            .scrap-card-meta,
+            .scrap-card-message,
+            .scrap-empty {
+                font-size: 7px;
+            }
+
+            .scrap-list {
+                max-height: 320px;
+            }
         }
     </style>
 </head>
@@ -498,6 +695,30 @@
                     <h2>RANKING</h2>
                     <ul id="leaderboard-list"></ul>
                 </div>
+
+                <section class="scrap-container" aria-labelledby="scrap-title">
+                    <h2 id="scrap-title" class="scrap-title">Deixa um scrap :3</h2>
+                    <p class="scrap-disclaimer">*sem tretas! não da pra apagar!</p>
+
+                    <form id="scrap-form" class="scrap-form">
+                        <div class="scrap-field">
+                            <label for="scrap-name">Nome:</label>
+                            <input type="text" id="scrap-name" maxlength="15" placeholder="Seu nome" autocomplete="nickname">
+                        </div>
+
+                        <div class="scrap-field scrap-field-message">
+                            <label for="scrap-message">Scrap:</label>
+                            <textarea id="scrap-message" maxlength="75" rows="2" placeholder="Escreva aqui..."></textarea>
+                            <span id="scrap-char-count" class="scrap-char-count">0/75</span>
+                        </div>
+
+                        <button id="scrap-send-btn" class="scrap-send-btn" type="submit" disabled>Enviar</button>
+                    </form>
+
+                    <div id="scrap-list" class="scrap-list" aria-live="polite">
+                        <p class="scrap-empty">Nenhum scrap ainda. Seja o primeiro!</p>
+                    </div>
+                </section>
             </div>
 
             <div id="hud-screen" class="screen">
@@ -547,6 +768,16 @@
         const pauseOverlay = document.getElementById('pause-overlay');
         const gameContainer = document.getElementById('game-container');
         const musicToggleBtn = document.getElementById('music-toggle-btn');
+        const scrapForm = document.getElementById('scrap-form');
+        const scrapNameInput = document.getElementById('scrap-name');
+        const scrapMessageInput = document.getElementById('scrap-message');
+        const scrapCharCount = document.getElementById('scrap-char-count');
+        const scrapSendBtn = document.getElementById('scrap-send-btn');
+        const scrapList = document.getElementById('scrap-list');
+
+        const SCRAP_MAX_LENGTH = 75;
+        const SCRAP_LIST_LIMIT = 20;
+        let scraps = [];
 
         const MUSIC_BPM = 132;
         const MUSIC_LOOKAHEAD = 0.12;
@@ -1625,6 +1856,131 @@
             localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(leaderboard.slice(0, 10)));
         }
 
+        function formatScrapDate(date) {
+            const d = date instanceof Date ? date : new Date(date);
+            const hh = String(d.getHours()).padStart(2, '0');
+            const mm = String(d.getMinutes()).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            const mo = String(d.getMonth() + 1).padStart(2, '0');
+            const yyyy = d.getFullYear();
+            return `${hh}:${mm} | ${dd}.${mo}.${yyyy}`;
+        }
+
+        function escapeHtml(text) {
+            return text
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function renderScrapList() {
+            scrapList.innerHTML = '';
+
+            if (scraps.length === 0) {
+                scrapList.innerHTML = '<p class="scrap-empty">Nenhum scrap ainda. Seja o primeiro!</p>';
+                return;
+            }
+
+            scraps.slice(0, SCRAP_LIST_LIMIT).forEach((scrap) => {
+                const card = document.createElement('article');
+                card.className = 'scrap-card';
+                card.innerHTML = `
+                    <div class="scrap-card-name">${escapeHtml(scrap.nome)}:</div>
+                    <div class="scrap-card-meta">${formatScrapDate(scrap.data)}</div>
+                    <p class="scrap-card-message">${escapeHtml(scrap.mensagem)}</p>
+                `;
+                scrapList.appendChild(card);
+            });
+        }
+
+        function updateScrapFormState() {
+            const nome = scrapNameInput.value.trim();
+            const mensagem = scrapMessageInput.value.trim();
+            const length = scrapMessageInput.value.length;
+
+            scrapCharCount.textContent = `${length}/${SCRAP_MAX_LENGTH}`;
+            scrapSendBtn.disabled = !(nome && mensagem);
+        }
+
+        function submitScrap(event) {
+            event.preventDefault();
+
+            const nome = scrapNameInput.value.trim();
+            const mensagem = scrapMessageInput.value.trim();
+            if (!nome || !mensagem || scrapSendBtn.disabled) return;
+
+            playButtonPlim();
+            scrapSendBtn.disabled = true;
+
+            const novoScrap = {
+                nome,
+                mensagem,
+                data: new Date().toISOString()
+            };
+
+            const publicacao = window.publicarScrapFirebase(novoScrap);
+
+            if (publicacao && typeof publicacao.finally === 'function') {
+                publicacao.finally(() => {
+                    scrapMessageInput.value = '';
+                    updateScrapFormState();
+                    scrapMessageInput.focus();
+                });
+            } else {
+                scrapMessageInput.value = '';
+                updateScrapFormState();
+                scrapMessageInput.focus();
+            }
+        }
+
+        function initScrapSection() {
+            renderScrapList();
+            updateScrapFormState();
+
+            scrapForm.addEventListener('submit', submitScrap);
+            scrapNameInput.addEventListener('input', updateScrapFormState);
+            scrapMessageInput.addEventListener('input', updateScrapFormState);
+
+            scrapNameInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    scrapForm.requestSubmit();
+                    return;
+                }
+                if (e.ctrlKey || e.metaKey || e.altKey) return;
+                initMusicEngine();
+                if (musicEngine.ctx?.state === 'suspended') {
+                    musicEngine.ctx.resume();
+                }
+                if (e.key.length === 1 || e.key === 'Backspace' || e.key === 'Delete') {
+                    playTypeTap();
+                }
+            });
+
+            scrapMessageInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    scrapForm.requestSubmit();
+                    return;
+                }
+                if (e.ctrlKey || e.metaKey || e.altKey) return;
+                initMusicEngine();
+                if (musicEngine.ctx?.state === 'suspended') {
+                    musicEngine.ctx.resume();
+                }
+                if (e.key.length === 1 || e.key === 'Backspace' || e.key === 'Delete') {
+                    playTypeTap();
+                }
+            });
+        }
+
+        window.atualizarListaScraps = function(novaLista) {
+            scraps = novaLista.slice(0, SCRAP_LIST_LIMIT);
+            renderScrapList();
+        };
+
         function loadLeaderboard() {
             const leaderboard = JSON.parse(localStorage.getItem(LEADERBOARD_KEY) || '[]');
             leaderboardList.innerHTML = '';
@@ -1660,8 +2016,7 @@
             } else if ((e.code === 'ArrowDown' || e.code === 'KeyS') && gameState === 'PLAYING') {
                 duck(true);
             } else if (e.code === 'Enter') {
-                if (gameState === 'START') startGame();
-                else if (gameState === 'GAMEOVER') restartBtn.click();
+                if (gameState === 'GAMEOVER') restartBtn.click();
                 else if (gameState === 'PAUSED') resumeGame();
             }
         });
@@ -1794,6 +2149,7 @@
 
         drawStartCat();
         loadLeaderboard();
+        initScrapSection();
         initMusicEngine();
         updateMusicToggleUI();
         tryPlayStartScreenSound();
@@ -1879,6 +2235,43 @@
 
   // Carrega o ranking global do Firebase assim que a página abrir
   window.addEventListener('load', atualizarTabelaRanking);
+
+  // 6. SCRAPS — leitura em tempo real + publicação
+  const SCRAP_LIST_LIMIT = 20;
+
+  window.iniciarScrapsFirebase = function() {
+    database.ref('scraps/')
+      .orderByChild('data')
+      .limitToLast(SCRAP_LIST_LIMIT)
+      .on('value', (snapshot) => {
+        const lista = [];
+
+        snapshot.forEach((childSnapshot) => {
+          lista.push(childSnapshot.val());
+        });
+
+        lista.reverse();
+
+        if (typeof window.atualizarListaScraps === 'function') {
+          window.atualizarListaScraps(lista);
+        }
+      }, (error) => {
+        console.error('Erro ao carregar scraps:', error);
+      });
+  };
+
+  window.publicarScrapFirebase = function(scrap) {
+    return database.ref('scraps/').push({
+      nome: scrap.nome,
+      mensagem: scrap.mensagem,
+      data: scrap.data
+    }).catch((error) => {
+      console.error('Erro ao publicar scrap:', error);
+      alert('Não foi possível enviar o scrap. Verifique as regras do Firebase.');
+    });
+  };
+
+  window.iniciarScrapsFirebase();
 </script>
     
 </body>
